@@ -45,43 +45,124 @@ const el = (tag, cls, text) => {
 
 // ---------------------------------------------------------------- home
 
-async function loadTrails() {
-  const trails = await api('/api/trails');
+// Same directory opened on different days is still one project: group trails
+// by target_dir so the home page reads as "here is everywhere I've dug into
+// this codebase", not a flat log of sessions.
+async function loadHome() {
+  const [trails, reports] = await Promise.all([
+    api('/api/trails'),
+    api('/api/reports').catch(() => []),
+  ]);
   trailList.replaceChildren();
   if (!trails.length) {
     trailList.appendChild(el('p', 'muted', 'Nothing opened yet.'));
     return;
   }
+
+  const byPath = new Map();
   for (const t of trails) {
-    const row = el('div', 'trail');
-    const open = el('button', 'trail-open');
-    open.appendChild(el('span', 'trail-name', t.title));
-    open.appendChild(el('span', 'trail-path', t.target_dir));
-    open.appendChild(el('span', 'trail-meta', `${t.cards} diagram${t.cards === 1 ? '' : 's'} · ${t.created_at}`));
-    open.onclick = () => go(t.root_id);
-    const del = el('button', 'trail-del', '×');
-    del.title = 'Forget this trail';
-    del.onclick = async () => { await api(`/api/trails/${t.id}`, { method: 'DELETE' }); loadTrails(); };
-    row.append(open, del);
-    trailList.appendChild(row);
+    if (!byPath.has(t.target_dir)) byPath.set(t.target_dir, []);
+    byPath.get(t.target_dir).push(t);
   }
-  loadReports();
+  const reportsByPath = new Map();
+  for (const r of reports) {
+    const key = byPath.has(r.target_dir) ? r.target_dir : null;
+    if (!reportsByPath.has(key)) reportsByPath.set(key, []);
+    reportsByPath.get(key).push(r);
+  }
+
+  for (const [path, pathTrails] of byPath) {
+    trailList.appendChild(pathGroup(path, pathTrails, reportsByPath.get(path) || []));
+  }
+  const orphaned = reportsByPath.get(null) || [];
+  if (orphaned.length) {
+    const group = el('div', 'path-group');
+    group.appendChild(el('h2', 'path-heading', 'other'));
+    group.appendChild(fixesDetails(orphaned));
+    trailList.appendChild(group);
+  }
 }
 
-// The inbox: renders that came out wrong, waiting to be trained on.
-async function loadReports() {
-  const filed = await api('/api/reports').catch(() => []);
-  const box = $('#fixes');
-  box.replaceChildren();
-  if (!filed.length) return;
-  box.appendChild(el('h2', 'section', `training-data · ${filed.length} filed`));
-  for (const r of filed) {
-    const row = el('div', 'fix');
-    row.appendChild(el('span', 'fix-status', r.card_title || 'untitled'));
-    row.appendChild(el('span', 'fix-note', r.description));
-    row.appendChild(el('span', 'fix-when', r.created_at));
-    box.appendChild(row);
+function pathGroup(path, trails, reports) {
+  const group = el('div', 'path-group');
+  const head = el('div', 'path-head');
+  head.appendChild(el('h2', 'path-heading', path.replace(/\/+$/, '').split('/').pop() || path));
+  head.appendChild(el('span', 'path-full', path));
+  group.appendChild(head);
+
+  const tree = el('div', 'tree');
+  treeRows(trails).forEach(({ card, prefix, isRoot, trailId }) => tree.appendChild(treeRow(card, prefix, isRoot, trailId)));
+  group.appendChild(tree);
+
+  if (reports.length) group.appendChild(fixesDetails(reports));
+  return group;
+}
+
+// One or more trails against the same path, rendered as a single `tree`-style
+// listing: each trail's root diagram is a top-level branch, its own flags
+// nested underneath in the order they were asked.
+function treeRows(trails) {
+  const rows = [];
+  trails.forEach((t, ti) => {
+    const cards = t.cards || [];
+    const root = cards.find((c) => !c.parent_id);
+    if (!root) return;
+    const byParent = new Map();
+    for (const c of cards) {
+      if (!c.parent_id) continue;
+      if (!byParent.has(c.parent_id)) byParent.set(c.parent_id, []);
+      byParent.get(c.parent_id).push(c);
+    }
+    const walk = (card, prefix, isLast, isRoot) => {
+      rows.push({ card, prefix: prefix + (isLast ? '└── ' : '├── '), isRoot, trailId: t.id });
+      const kids = byParent.get(card.id) || [];
+      const nextPrefix = prefix + (isLast ? '    ' : '│   ');
+      kids.forEach((kid, i) => walk(kid, nextPrefix, i === kids.length - 1, false));
+    };
+    walk(root, '', ti === trails.length - 1, true);
+  });
+  return rows;
+}
+
+function treeRow(card, prefix, isRoot, trailId) {
+  const row = el('div', `tree-row${card.status !== 'done' ? ' ' + card.status : ''}`);
+  row.appendChild(el('span', 'tree-prefix', prefix));
+  const link = el('button', 'tree-link', card.title || card.remark || 'untitled');
+  link.type = 'button';
+  link.title = card.remark || '';
+  link.onclick = () => go(card.id);
+  row.appendChild(link);
+  row.appendChild(el('span', 'tree-when', (card.created_at || '').slice(0, 10)));
+  if (isRoot) {
+    const del = el('button', 'tree-del', '×');
+    del.type = 'button';
+    del.title = 'Forget this trail';
+    del.onclick = async (ev) => {
+      ev.stopPropagation();
+      await api(`/api/trails/${trailId}`, { method: 'DELETE' });
+      loadHome();
+    };
+    row.appendChild(del);
   }
+  return row;
+}
+
+// Renders that came out wrong, waiting to be trained on. Collapsed by default
+// and nested under the project they came from — this is upkeep, not headline
+// content, and only worth opening when you're specifically curious.
+function fixesDetails(reports) {
+  const details = el('details', 'fixes');
+  details.appendChild(el('summary', null, `training data · ${reports.length} filed`));
+  const list = el('ul', 'fixes-list');
+  for (const r of reports) {
+    const item = el('li', 'fix');
+    item.appendChild(el('span', 'fix-title', r.card_title || 'untitled'));
+    item.appendChild(el('span', 'fix-note', r.description));
+    item.appendChild(el('span', 'fix-when', (r.created_at || '').slice(0, 10)));
+    list.appendChild(item);
+  }
+  details.appendChild(list);
+  return details;
 }
 
 $('#open').onsubmit = async (ev) => {
@@ -112,7 +193,7 @@ async function route() {
     home.hidden = false;
     strip.hidden = true;
     crumb.replaceChildren();
-    loadTrails();
+    loadHome();
     return;
   }
   home.hidden = true;

@@ -49,36 +49,52 @@ button { font: inherit; cursor: pointer; }
   background: var(--ink); color: var(--paper);
 }
 #open button:disabled { opacity: 0.5; cursor: wait; }
-#trails { margin-top: 32px; display: grid; gap: 6px; }
-.trail { display: flex; align-items: stretch; gap: 4px; }
-.trail-open {
-  flex: 1; min-width: 0; display: grid; gap: 1px; text-align: left;
-  background: var(--card); border: 1px solid var(--ink-faint); border-radius: 8px; padding: 10px 12px;
-}
-.trail-open:hover { border-color: var(--ink); }
-.trail-name { font-weight: 600; }
-.trail-path, .trail-meta { font-size: 11px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trail-del { background: none; border: 0; color: var(--ink-faint); padding: 0 8px; font-size: 18px; }
-.trail-del:hover { color: var(--flag); }
+#trails { margin-top: 32px; display: grid; gap: 26px; }
 
-#fixes { margin-top: 34px; display: grid; gap: 3px; }
-.section {
-  font-size: 11px; color: var(--ink-soft); font-weight: 400;
-  letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px;
+.path-group { display: grid; gap: 4px; }
+.path-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.path-heading { font-size: 13px; }
+.path-full { font-size: 11px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* Linux `tree`-style listing: a monospace prefix draws the branch lines, so no
+   nested <ul> or CSS lines are needed to show what belongs to what. */
+.tree { display: grid; }
+.tree-row { display: flex; align-items: baseline; gap: 6px; padding: 1px 0; }
+.tree-prefix { color: var(--ink-faint); white-space: pre; flex-shrink: 0; }
+.tree-link {
+  background: none; border: 0; padding: 0; font: inherit; font-size: 12.5px; color: var(--ink);
+  text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
-.fix {
-  display: flex; gap: 9px; align-items: baseline; font-size: 11px;
-  color: var(--ink-soft); padding: 3px 0; border-bottom: 1px solid var(--ink-faint);
-}
-.fix-status { flex-shrink: 0; width: 84px; color: var(--ink); }
-.fix-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fix-when { flex-shrink: 0; opacity: 0.7; }
+.tree-link:hover { color: var(--flag); }
+.tree-row.running .tree-link { color: var(--ink-soft); font-style: italic; }
+.tree-row.error .tree-link { color: var(--flag); }
+.tree-when { flex-shrink: 0; margin-left: auto; padding-left: 8px; font-size: 10px; color: var(--ink-soft); opacity: 0.7; }
+.tree-del { background: none; border: 0; color: var(--ink-faint); padding: 0 2px; font-size: 14px; flex-shrink: 0; }
+.tree-del:hover { color: var(--flag); }
+
+/* Training-data filings: upkeep, not headline content — collapsed, compact,
+   and stacked rather than tabular so a long note wraps instead of widening. */
+.fixes { margin-top: 2px; font-size: 11px; color: var(--ink-soft); }
+.fixes > summary { cursor: pointer; list-style: none; padding: 2px 0; letter-spacing: 0.02em; }
+.fixes > summary::-webkit-details-marker { display: none; }
+.fixes > summary::before { content: "▸ "; }
+.fixes[open] > summary::before { content: "▾ "; }
+.fixes-list { margin: 4px 0 0; padding: 0 0 0 14px; list-style: none; display: grid; gap: 5px; }
+.fix { display: grid; gap: 1px; padding: 3px 0 5px; border-bottom: 1px solid var(--ink-faint); }
+.fix-title { color: var(--ink); font-size: 11px; }
+.fix-note { font-size: 11px; overflow-wrap: break-word; }
+.fix-when { font-size: 10px; opacity: 0.7; }
 
 /* ------------------------------------------------------------- the strip */
 #strip {
   display: flex; align-items: flex-start; gap: 22px;
   padding: 26px 40px 40px; overflow-x: auto; height: calc(100vh - 45px);
 }
+/* The [hidden] UA rule is a plain `display: none`, and this file's own
+   `#strip { display: flex }` above outranks it (author beats UA regardless of
+   specificity) — so without this, toggling .hidden left the strip painted
+   right through the home screen. */
+#strip[hidden] { display: none; }
 
 .card {
   flex: 0 0 auto; background: var(--card); border: 1px solid var(--ink-faint);

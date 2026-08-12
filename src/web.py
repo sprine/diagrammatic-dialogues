@@ -95,13 +95,19 @@ def index(request: Request):
 
 @app.get("/api/trails")
 def api_trails():
+    """Every trail, each carrying its own card tree (id/parent/title/remark —
+    enough to draw the lineage as a tree without a follow-up call per trail)."""
     with db() as conn:
-        rows = conn.execute(
-            """SELECT t.*, (SELECT COUNT(*) FROM card WHERE trail_id = t.id) AS cards,
-                      (SELECT id FROM card WHERE trail_id = t.id AND parent_id IS NULL) AS root_id
-               FROM trail t ORDER BY t.created_at DESC"""
-        ).fetchall()
-    return [dict(r) for r in rows]
+        trails = conn.execute("SELECT * FROM trail ORDER BY created_at DESC").fetchall()
+        out = []
+        for t in trails:
+            cards = conn.execute(
+                """SELECT id, parent_id, title, remark, anchor_label, status, created_at
+                   FROM card WHERE trail_id = ? ORDER BY created_at""",
+                (t["id"],),
+            ).fetchall()
+            out.append({**dict(t), "cards": [dict(c) for c in cards]})
+    return out
 
 
 @app.post("/api/trails")
@@ -334,10 +340,17 @@ def api_report(card_id: str, payload: dict = Body(...)):
 
 
 @app.get("/api/reports")
-def api_reports(limit: int = 12):
+def api_reports(limit: int = 200):
+    """Filed reports, each carrying the project path it came from so the client
+    can nest them under that trail instead of running a separate inbox."""
     with db() as conn:
         rows = conn.execute(
-            "SELECT * FROM report ORDER BY created_at DESC LIMIT ?", (limit,)
+            """SELECT r.*, t.target_dir AS target_dir
+               FROM report r
+               LEFT JOIN card c ON c.id = r.card_id
+               LEFT JOIN trail t ON t.id = c.trail_id
+               ORDER BY r.created_at DESC LIMIT ?""",
+            (limit,),
         ).fetchall()
     return [dict(r) for r in rows]
 
