@@ -1,0 +1,11 @@
+I have there the svg and png version of an idea that I wish to implement.
+Behind the scenes, use the claude cli for all the work.
+Build the simplest style + GUI that allows the loop of [diagram generated] => [user clicks to dig in, question, instruct, build] => [claude cli does the analysis or
+work] => [new diagram based on the analysis, with a minimap of the previous one, clicking which takes me back to the previous one]. Every interaction should remain
+visible, like flags in a field, and clicking them should open the respective diagram.
+I'm building this because I wish to gain more confidence in what is produced by the AI agents when generating code.
+
+PRECEPTS: Uses claude cli; can use any of the models available via claud.
+
+What's driving me is the concern that since I did not implement this code myself, is that the decision I would have taken? I think in diagrams, so the app is called
+Speak to me in Diagrams.

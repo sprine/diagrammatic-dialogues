@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speak to me in Diagrams</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>▱</text></svg>">
+</head>
+<body>
+  <nav id="crumb"></nav>
+
+  <main id="home">
+    <h1>Speak to me in Diagrams</h1>
+    <p class="tagline">Open a codebase. Get a sketch. Point at anything that looks wrong.</p>
+    <form id="open">
+      <input id="dir" name="dir" value="{{ cwd }}" spellcheck="false" autocomplete="off" aria-label="directory to open">
+      <button type="submit">Open</button>
+    </form>
+    <p id="open-error" class="error"></p>
+    <div id="trails"></div>
+  </main>
+
+  <section id="strip" hidden></section>
+
+  <script id="choices" type="application/json">{"models": {{ models|tojson }}, "efforts": {{ efforts|tojson }}, "ladder": {{ ladder|tojson }}}</script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
