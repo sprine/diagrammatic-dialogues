@@ -49,6 +49,8 @@ button { font: inherit; cursor: pointer; }
   background: var(--ink); color: var(--paper);
 }
 #open button:disabled { opacity: 0.5; cursor: wait; }
+#open .ghost-btn { background: var(--card); color: var(--ink-soft); border: 1px solid var(--ink-faint); flex-shrink: 0; }
+#open .ghost-btn:hover { border-color: var(--ink); color: var(--ink); }
 #trails { margin-top: 32px; display: grid; gap: 26px; }
 
 .path-group { display: grid; gap: 4px; }

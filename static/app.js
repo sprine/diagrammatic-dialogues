@@ -165,6 +165,28 @@ function fixesDetails(reports) {
   return details;
 }
 
+// Browsers never hand back a folder's absolute path — only its name and the
+// relative paths of what's inside — so picking one can only fill in a name.
+// If that name matches a directory already opened before, resolve it to the
+// full path it was opened with; otherwise leave it as a name to finish typing.
+$('#browse').onclick = () => $('#dir-picker').click();
+$('#dir-picker').onchange = async () => {
+  const file = $('#dir-picker').files[0];
+  $('#dir-picker').value = '';
+  if (!file) return;
+  const name = (file.webkitRelativePath || file.name).split('/')[0];
+  if (!name) return;
+  const dir = $('#dir');
+  try {
+    const trails = await api('/api/trails');
+    const matches = trails.filter((t) => t.target_dir.replace(/\/+$/, '').split('/').pop() === name);
+    dir.value = matches.length === 1 ? matches[0].target_dir : name;
+  } catch {
+    dir.value = name;
+  }
+  dir.focus();
+};
+
 $('#open').onsubmit = async (ev) => {
   ev.preventDefault();
   const button = $('#open button');

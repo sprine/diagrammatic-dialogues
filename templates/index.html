@@ -14,8 +14,11 @@
     <h1>Speak to me in Diagrams</h1>
     <p class="tagline">Open a codebase. Get a sketch. Point at anything that looks wrong.</p>
     <form id="open">
-      <input id="dir" name="dir" value="{{ cwd }}" spellcheck="false" autocomplete="off" aria-label="directory to open">
+      <button type="button" id="browse" class="ghost-btn" title="Pick a folder">Browse…</button>
+      <input id="dir" name="dir" value="{{ cwd }}" spellcheck="false" autocomplete="off"
+             placeholder="or paste an absolute path" aria-label="directory to open">
       <button type="submit">Open</button>
+      <input id="dir-picker" type="file" webkitdirectory directory multiple hidden aria-hidden="true" tabindex="-1">
     </form>
     <p id="open-error" class="error"></p>
     <div id="trails"></div>
