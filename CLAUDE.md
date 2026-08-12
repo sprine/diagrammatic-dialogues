@@ -85,6 +85,14 @@ because a child card resumes its parent's session and can see the whole trail.
 **New columns go in `models.ADDED_COLUMNS`.** `CREATE TABLE IF NOT EXISTS` will
 not widen an existing table, and a trail is worth keeping across a schema change.
 
+**Nothing in this app edits the rendering pipeline automatically.** `asciigrid`
+and `sketch` are the surface the ascii-to-sketch model is judged on, so a bad
+render is filed to `training-data/` by `src/reports.py` and left alone. There was
+a version of this that dispatched an agent to patch the parser and commit; it is
+gone, and reverted. Two reasons it was wrong: an autopatch hides the failure the
+next training round needs, and an agent with edit rights on its own renderer is
+the one thing a tool built to make AI output *checkable* should not have.
+
 **The parser is where the sharp edges are**, so that is what the tests cover. Any
 change to grammar tolerance (`_WIRE`, `_NEEDS`, `repair`) needs a test built from
 real model output, not a hand-written ideal case — every rule in there exists

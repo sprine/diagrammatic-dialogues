@@ -6,4 +6,3 @@ __pycache__/
 
 # the trail store: local state, not source
 diagrams.db*
-autofix.log

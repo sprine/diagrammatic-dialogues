@@ -49,17 +49,14 @@ CREATE TABLE IF NOT EXISTS card (
 CREATE INDEX IF NOT EXISTS card_trail  ON card(trail_id);
 CREATE INDEX IF NOT EXISTS card_parent ON card(parent_id);
 
--- One press of the bug button: a subagent sent at this app's own source.
-CREATE TABLE IF NOT EXISTS fix (
+-- One press of the report button: a render that came out wrong, filed as
+-- training data. The file on disk is the artefact; this is the index.
+CREATE TABLE IF NOT EXISTS report (
     id          TEXT PRIMARY KEY,
     card_id     TEXT REFERENCES card(id) ON DELETE SET NULL,
     card_title  TEXT NOT NULL DEFAULT '',
-    status      TEXT NOT NULL DEFAULT 'running',  -- running | fixed | no_change | failed
-    note        TEXT NOT NULL DEFAULT '',
-    commit_sha  TEXT NOT NULL DEFAULT '',
-    files       TEXT NOT NULL DEFAULT '[]',
-    cost_usd    REAL NOT NULL DEFAULT 0,
-    duration_ms INTEGER NOT NULL DEFAULT 0,
+    description TEXT NOT NULL DEFAULT '',
+    path        TEXT NOT NULL DEFAULT '',
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """

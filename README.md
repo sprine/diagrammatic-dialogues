@@ -49,6 +49,12 @@ to ask for faith:
   swaps the picture for the text it was drawn from. The picture is generated
   mechanically from exactly that text, so it cannot say something the text does
   not.
+- **A bad render is filed, not patched.** Beside the ASCII there is a box asking
+  what the render got wrong. Say so and it lands in `training-data/` as a record
+  and the wrong picture next to it: your description, the ASCII as the model drew
+  it and as repair straightened it, and what the pipeline made of it. Nothing
+  edits the renderer — these are the failures the next round of training needs to
+  see, and quietly correcting them by hand is how they stop being visible.
 - **Read-only by default.** A turn runs with an allowlist, not a denylist:
   `Read`, `Glob`, `Grep`, and a handful of read-only `git`/`ls`/`find` commands.
   Writes, deletes, and shell redirects are refused. Claude Code additionally

@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import autofix, claude_cli, prompts, sketch
+from . import claude_cli, prompts, reports, sketch
 from .asciigrid import parse, repair
 from .models import card_row, children, db, init_schema, lineage
 
@@ -238,59 +238,35 @@ async def api_stream(card_id: str):
     )
 
 
-@app.post("/api/cards/{card_id}/bug")
-async def api_bug(card_id: str):
-    """This picture is wrong — go fix the code that drew it."""
+@app.post("/api/cards/{card_id}/report")
+def api_report(card_id: str, payload: dict = Body(...)):
+    """This render came out wrong. File it as training data — do not patch it."""
+    description = (payload.get("description") or "").strip()
+    if not description:
+        raise HTTPException(400, "say what is wrong with it")
+
     with db() as conn:
         row = conn.execute("SELECT * FROM card WHERE id = ?", (card_id,)).fetchone()
         if not row:
             raise HTTPException(404, "no such card")
         card = card_row(row)
-        busy = conn.execute("SELECT id FROM fix WHERE status = 'running'").fetchone()
-        if busy:
-            raise HTTPException(409, "an autofix is already running")
-        fix_id = str(uuid.uuid4())
+
+    path = reports.write(card, description)
+    with db() as conn:
         conn.execute(
-            "INSERT INTO fix (id, card_id, card_title) VALUES (?,?,?)",
-            (fix_id, card_id, card["title"]),
+            "INSERT INTO report (id, card_id, card_title, description, path) VALUES (?,?,?,?,?)",
+            (str(uuid.uuid4()), card_id, card["title"], description, path.name),
         )
-
-    def record(status: str, **fields):
-        sets = ", ".join(f"{k} = ?" for k in fields)
-        values = [json.dumps(v) if isinstance(v, list) else v for v in fields.values()]
-        with db() as conn:
-            conn.execute(
-                f"UPDATE fix SET status = ?{', ' + sets if sets else ''} WHERE id = ?",
-                [status, *values, fix_id],
-            )
-
-    asyncio.create_task(_autofix(fix_id, card, record))
-    return {"fix_id": fix_id}
+    return {"path": path.name}
 
 
-async def _autofix(fix_id: str, card: dict, record):
-    try:
-        await autofix.run(fix_id, card, record)
-    except Exception as exc:  # a broken attempt must not take the server with it
-        record("failed", note=f"{type(exc).__name__}: {exc}")
-
-
-@app.get("/api/fixes")
-def api_fixes(limit: int = 12):
+@app.get("/api/reports")
+def api_reports(limit: int = 12):
     with db() as conn:
         rows = conn.execute(
-            "SELECT * FROM fix ORDER BY created_at DESC LIMIT ?", (limit,)
+            "SELECT * FROM report ORDER BY created_at DESC LIMIT ?", (limit,)
         ).fetchall()
-    return [{**dict(r), "files": json.loads(r["files"] or "[]")} for r in rows]
-
-
-@app.get("/api/fixes/{fix_id}")
-def api_fix(fix_id: str):
-    with db() as conn:
-        row = conn.execute("SELECT * FROM fix WHERE id = ?", (fix_id,)).fetchone()
-    if not row:
-        raise HTTPException(404, "no such fix")
-    return {**dict(row), "files": json.loads(row["files"] or "[]")}
+    return [dict(r) for r in rows]
 
 
 @app.post("/api/cards/{card_id}/cancel")

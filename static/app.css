@@ -71,10 +71,7 @@ button { font: inherit; cursor: pointer; }
   color: var(--ink-soft); padding: 3px 0; border-bottom: 1px solid var(--ink-faint);
 }
 .fix-status { flex-shrink: 0; width: 84px; color: var(--ink); }
-.fix.failed .fix-status { color: var(--flag); }
-.fix.running .fix-status::after { content: "…"; }
 .fix-note { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fix-sha { flex-shrink: 0; color: var(--ink); }
 .fix-when { flex-shrink: 0; opacity: 0.7; }
 
 /* ------------------------------------------------------------- the strip */
@@ -109,9 +106,18 @@ button { font: inherit; cursor: pointer; }
 .badge.pill { background: none; cursor: pointer; letter-spacing: 0.04em; }
 .badge.pill:hover { color: var(--ink); border-color: var(--ink); }
 .badge.pill.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.badge.pill.warn { color: var(--flag); border-color: var(--flag); }
 .badge.pill:disabled { cursor: wait; opacity: 0.6; }
-.badge.pill.bug:hover:not(:disabled) { color: var(--flag); border-color: var(--flag); }
+
+/* Filing a bad render, shown only beside the ascii that produced it. */
+.report { display: flex; gap: 8px; align-items: center; margin-top: 10px; width: 100%; }
+.report-what {
+  flex: 1; min-width: 0; font: inherit; font-size: 12px; padding: 7px 10px;
+  border: 1px solid var(--ink-faint); border-radius: 7px;
+  background: var(--card); color: var(--ink);
+}
+.report-what:focus { outline: 1.5px solid var(--ink); outline-offset: -1px; }
+.report-said { font-size: 11px; color: var(--flag); }
+.report-said.ok { color: var(--ink-soft); }
 
 /* the source the picture was drawn from, shown at the size it was written */
 .ascii {
@@ -122,7 +128,7 @@ button { font: inherit; cursor: pointer; }
 .anchor-note { margin: 0; font-size: 11px; color: var(--ink-soft); }
 .card.active .anchor-note { font-size: 12px; }
 
-.canvas { display: flex; justify-content: center; padding: 4px 0; }
+.canvas { display: flex; flex-direction: column; align-items: center; padding: 4px 0; }
 .pending {
   color: var(--ink-soft); padding: 40px 0; font-size: 12px;
   display: flex; gap: 8px; align-items: baseline;

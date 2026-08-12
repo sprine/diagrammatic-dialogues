@@ -1,0 +1,37 @@
+{
+  "reported_at": "2026-08-12T204807Z",
+  "description": "Most of the diagram came back as loose captions instead of boxes; only 2 of the 6 things drawn became boxes.",
+  "ascii": "+---------------------------------------------+\n|             web.py module scope             |\n|                                             |\n| JOBS: dict[str, Job] = {}  <- lives forever |\n+---------------------------------------------+\n                      |\n                      | _launch(card_id)\n                      v\n               +-------------+\n               | Job         |\n               | .events     |  <- grows while\n               | .subscribers|     turn runs\n               | .finished   |\n               +------+------+\n                      |\n             _drive() | streams events,\n                      | calls job.emit()\n                      v\n             finally: job.finished = True\n                      |\n                      X   no JOBS.pop(card_id)\n                      |   anywhere in web.py\n                      v\n             entry + its .events list\n             stay in JOBS forever",
+  "ascii_as_drawn": null,
+  "produced": {
+    "boxes": [
+      "web.py module scope JOBS: dict[str, Job] = {}  <- lives forever",
+      "Job .events .subscribers .finished"
+    ],
+    "edges": [
+      {
+        "from": "web.py module scope JOBS: dict[str, Job] = {}  <- lives forever",
+        "to": "Job .events .subscribers .finished",
+        "label": ""
+      }
+    ],
+    "loose_text": [
+      "_launch(card_id)",
+      "grows while\nturn runs",
+      "_drive()",
+      "streams events,\ncalls job.emit()",
+      "no JOBS.pop(card_id)\nanywhere in web.py",
+      "entry + its .events list\nstay in JOBS forever"
+    ],
+    "unconnected_boxes": [],
+    "audit": []
+  },
+  "svg": "2026-08-12T204807Z-job-lifecycle-in-jobs-dict.svg",
+  "card": {
+    "id": "efdfe2ea-876b-4bd7-a316-ef547dfccf4f",
+    "title": "Job lifecycle in JOBS dict",
+    "model": "sonnet",
+    "effort": "medium",
+    "remark": "The Job buffer replays every event to late subscribers. Is that the decision I would have taken, or does it leak memory on long trails?"
+  }
+}
