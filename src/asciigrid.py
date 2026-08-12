@@ -150,12 +150,15 @@ def _h_runs(row: list[str]) -> list[tuple[int, int]]:
     return out
 
 
+_MAX_BOX_ROWS = 18  # a box taller than this is not a box anyone can read
+
+
 def _first_broken_box(grid, closed):
     """A top border, a bottom border roughly under it, and only text between."""
     rows = len(grid)
     for y in range(rows):
         for x1, x2 in _h_runs(grid[y]):
-            for y2 in range(y + 2, min(y + 9, rows)):
+            for y2 in range(y + 2, min(y + _MAX_BOX_ROWS, rows)):
                 match = next(
                     ((b1, b2) for b1, b2 in _h_runs(grid[y2]) if abs(b1 - x1) <= 2 and abs(b2 - x2) <= 2),
                     None,

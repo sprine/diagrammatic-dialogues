@@ -45,8 +45,10 @@ to ask for faith:
 - **Every card carries a receipt** — every file read, every search run, in order,
   with cost and wall time. Blocked calls are listed and marked `blocked` rather
   than quietly dropped.
-- **The ASCII source is one click away.** The picture is generated mechanically
-  from that text, so the diagram cannot say something the text does not.
+- **The ASCII source is one click away** — the `ASCII` pill in the card header
+  swaps the picture for the text it was drawn from. The picture is generated
+  mechanically from exactly that text, so it cannot say something the text does
+  not.
 - **Read-only by default.** A turn runs with an allowlist, not a denylist:
   `Read`, `Glob`, `Grep`, and a handful of read-only `git`/`ls`/`find` commands.
   Writes, deletes, and shell redirects are refused. Claude Code additionally

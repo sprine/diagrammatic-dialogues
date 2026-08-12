@@ -1,0 +1,27 @@
+# boxes=4 edges=4 orphans=0
+ renderer (sandboxed, no Node/electron access)
+ contextIsolation:true, nodeIntegration:false, sandbox:true (index.ts:92-95)
++------------------------------------------------------+
+| window.api.library.list() / ingest.pickAndAdd() / ...|
++------------------------------------------------------+
+                          |
+             contextBridge.exposeInMainWorld('api', api)
+                          v
++------------------------------------------------------+
+|              preload/index.ts                        |
+|                                                        |
+|  library { list, check, remove }    -> ipcRenderer     |
+|  ingest  { pickAndAdd, addPaths,       .invoke(CHANNEL,|
+|            counts, failures, retry,     ...args)       |
+|            cancelPending, onEvent }                    |
+|  shell   { openOriginal }           -> ipcRenderer.on  |
+|  files   { pathsFor: webUtils.getPathForFile }         |
+|            (preload-only API)                          |
++------------------------------------------------------+
+              ^                            |
+              | shared contract            | CHANNELS.x
+    +-------------------+                  v
+    | shared/ipc.ts     |          +----------------+
+    | type Api          |<---------|  main/ipc.ts   |
+    | const CHANNELS    |same types|  ipcMain.handle|
+    +-------------------+          +----------------+

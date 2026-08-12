@@ -121,10 +121,12 @@ def render(
         lines = [ln for ln in (node.label or "").split("\n") if ln]
         longest = max((len(ln) for ln in lines), default=1)
         size = max(8.0, min(ch * 0.64, ((node.w - 1.2) * cell) / (longest * 0.6)))
+        # A name centres well; a list of members does not.
+        ranged = is_group or len(lines) > 3
         start = y + ch * 0.95 if is_group else y + h / 2 - (len(lines) - 1) * size * 1.25 / 2
         for i, text in enumerate(lines):
-            anchor = "start" if is_group else "middle"
-            tx = x + cell * 1.2 if is_group else x + w / 2
+            anchor = "start" if ranged else "middle"
+            tx = x + cell * 1.2 if ranged else x + w / 2
             texts.append(
                 f'<text class="label" x="{_n(tx)}" y="{_n(start + i * size * 1.25)}" '
                 f'font-size="{_n(size)}" text-anchor="{anchor}" '

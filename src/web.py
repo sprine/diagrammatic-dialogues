@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import claude_cli, prompts, sketch
-from .asciigrid import parse
+from .asciigrid import parse, repair
 from .models import card_row, children, db, init_schema, lineage
 
 ACTIVE = {"width": 960, "height": 540, "ratio": 0.6}
@@ -157,7 +157,8 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
     effort = payload.get("effort") if payload.get("effort") in prompts.EFFORTS else default_effort
     write = bool(payload.get("write"))
 
-    diagram = parse(parent["ascii"])
+    # Must match what api_view rendered, or the flag resolves to the wrong box.
+    diagram = parse(repair(parent["ascii"]))
     anchor_node = payload.get("anchor_node")
     node = diagram.node(anchor_node) if anchor_node else None
     anchor_label = node.label.replace("\n", " ") if node else ""
@@ -206,6 +207,10 @@ def api_view(card_id: str):
                 }
                 for n, kid in enumerate(children(conn, card["id"]))
             ]
+            # Straighten on the way out too, so a parser improvement repairs
+            # diagrams drawn before it existed. What the ASCII toggle shows is
+            # what the picture was built from — they can never disagree.
+            card["ascii"] = repair(card["ascii"])
             card["svg"] = sketch.render(
                 parse(card["ascii"]),
                 **(ACTIVE if active else MINI),

@@ -12,6 +12,7 @@ let view = null;          // last /api/view payload
 let anchor = null;        // { node, label } the composer is pointed at
 let stream = null;        // EventSource for the running card
 let clockTimer = null;    // elapsed counter on the running card
+const readingAscii = new Set();  // cards showing their source instead of the picture
 
 // A turn can think for minutes without touching a file, so show the time passing.
 function startClock(node, startedAt) {
@@ -142,6 +143,7 @@ function cardNode(card, isActive, index) {
   head.appendChild(el('span', 'step', String(index + 1)));
   head.appendChild(el('h2', null, card.title || (card.status === 'running' ? 'thinking…' : card.remark)));
   if (card.write_mode) head.appendChild(el('span', 'badge write', 'wrote code'));
+  if (isActive && card.status === 'done') head.appendChild(asciiToggle(card));
   head.appendChild(el('span', 'badge', `${card.model} · ${card.effort}`));
   node.appendChild(head);
 
@@ -172,8 +174,7 @@ function cardNode(card, isActive, index) {
   } else if (card.status === 'error') {
     canvas.appendChild(el('pre', 'error', card.error));
   } else {
-    canvas.innerHTML = card.svg;   // rendered server-side; one renderer, not two
-    wire(canvas, isActive);
+    paint(canvas, card, isActive);
   }
 
   if (!isActive) {
@@ -227,11 +228,32 @@ function receipt(card) {
     list.appendChild(li);
   });
   box.appendChild(list);
-  const raw = el('details', 'raw');
-  raw.appendChild(el('summary', null, 'ascii source'));
-  raw.appendChild(el('pre', null, card.ascii));
-  box.appendChild(raw);
   return box;
+}
+
+// The picture is generated from the ascii, so being able to read the ascii is
+// how you check the picture is not lying to you.
+function paint(canvas, card, isActive) {
+  if (readingAscii.has(card.id)) {
+    canvas.replaceChildren(el('pre', 'ascii', card.ascii));
+    return;
+  }
+  canvas.innerHTML = card.svg;   // rendered server-side; one renderer, not two
+  wire(canvas, isActive);
+}
+
+function asciiToggle(card) {
+  const pill = el('button', 'badge pill', 'ASCII');
+  pill.type = 'button';
+  pill.title = 'Read the source this diagram was drawn from';
+  if (readingAscii.has(card.id)) pill.classList.add('on');
+  pill.onclick = (ev) => {
+    ev.stopPropagation();
+    readingAscii.has(card.id) ? readingAscii.delete(card.id) : readingAscii.add(card.id);
+    pill.classList.toggle('on', readingAscii.has(card.id));
+    paint(pill.closest('.card').querySelector('.canvas'), card, true);
+  };
+  return pill;
 }
 
 function wire(root, isActive) {

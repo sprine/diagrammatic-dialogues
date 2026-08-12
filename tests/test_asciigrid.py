@@ -309,3 +309,12 @@ def test_text_under_a_horizontal_arrow_is_not_a_vertical_caption():
 """
     )
     assert [(e.source, e.target) for e in d.edges] == [(d.nodes[1].id, d.nodes[0].id)]
+
+
+def test_repair_closes_a_box_taller_than_a_few_rows():
+    # a component box with many lines of detail; the right border is ragged
+    body = "\n".join(f"|  line {i} of detail{' ' * (i % 3)}|" for i in range(9))
+    broken = "+" + "-" * 22 + "+\n" + body + "\n+" + "-" * 22 + "+\n"
+    assert parse(broken).nodes == []
+    assert audit(broken, fatal_only=True)
+    assert len(parse(repair(broken)).nodes) == 1

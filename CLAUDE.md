@@ -55,6 +55,12 @@ wonky — it vanishes silently. `repair()` straightens boxes deterministically;
 only `audit(fatal_only=True)` — a box that still will not close — is worth the
 ~8s of a redraw turn. An oversized diagram renders as drawn.
 
+**Repair runs again at view time**, so a parser fix retroactively straightens
+diagrams drawn before it existed. `api_view` and `api_remark` must both parse
+`repair(ascii)`: node ids are positional, so parsing different text in the two
+places would resolve a flag to the wrong box. The ASCII toggle shows the same
+repaired text the picture was built from — those two can never disagree.
+
 **Do not tell the model to count characters.** An earlier prompt did, and Claude
 responded by trying to write and run a Python script to lay out the ASCII. In
 read-only mode that is denied, repeatedly, and a 20-second turn became 253

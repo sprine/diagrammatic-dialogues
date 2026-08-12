@@ -90,6 +90,16 @@ button { font: inherit; cursor: pointer; }
   border-radius: 999px; padding: 1px 7px; flex-shrink: 0;
 }
 .badge.write { color: var(--flag); border-color: var(--flag); }
+.badge.pill { background: none; cursor: pointer; letter-spacing: 0.04em; }
+.badge.pill:hover { color: var(--ink); border-color: var(--ink); }
+.badge.pill.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* the source the picture was drawn from, shown at the size it was written */
+.ascii {
+  margin: 0; padding: 14px 16px; font-size: 12px; line-height: 1.35;
+  background: var(--paper); border: 1px solid var(--ink-faint); border-radius: 8px;
+  overflow-x: auto; max-width: 100%; white-space: pre; color: var(--ink);
+}
 .anchor-note { margin: 0; font-size: 11px; color: var(--ink-soft); }
 .card.active .anchor-note { font-size: 12px; }
 
@@ -141,11 +151,6 @@ button { font: inherit; cursor: pointer; }
 .changed { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
 .changed-title { color: var(--flag); }
 .changed code { background: rgb(180 64 42 / 0.09); padding: 1px 5px; border-radius: 4px; }
-.raw > summary { cursor: pointer; margin-top: 6px; }
-.raw pre {
-  background: var(--paper); border: 1px solid var(--ink-faint); border-radius: 6px;
-  padding: 8px; overflow-x: auto; font-size: 11px; line-height: 1.35;
-}
 
 .activity {
   max-height: 220px; overflow-y: auto; font-size: 11px; color: var(--ink-soft);
