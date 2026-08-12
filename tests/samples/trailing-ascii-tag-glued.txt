@@ -1,0 +1,37 @@
+# boxes=4 edges=3 orphans=0
+   editor types -> commit (sheet/write/present)
+              |
+              v
+     +-----------------------+
+     |  saveService()        |
+     |  rev += 1, savedBy    |
+     +-----------+-----------+
+                 |
+                 v
+     +-----------------------+     read-before-write
+     |  writeServiceOnce()   |<------ disk changed? --+
+     |  JSON.stringify(svc)  |        notify, write   |
+     +-----------+-----------+        anyway          |
+                 |                                     |
+                 | write(dir,'service.json',text)      |
+                 v                                     |
+        +-------------------+                          |
+        |  service.json     |--------------------------+
+        |  { rev, savedBy,  |
+        |    title, rows[], |
+        |    plan, bleep,   |
+        |    sid, roomKey } |
+        +---------+---------+
+                 ^
+                 | readText every 2.5s
+                 |
+     +-----------------------+
+     |        |vice()        |
+     |     | vs mine.rev     |
+     +-----------------------+
+        /         |          \
+       v           v           v
+  rev lower    rev equal,   rev higher
+  (in-flight   diff bytes    -> adopt
+   write)      -> notify,    normalizeService(remote)
+  ignore        converge     state.svc = remote</ascii>

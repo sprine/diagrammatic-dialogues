@@ -115,6 +115,12 @@ def parse(ascii_art: str) -> Diagram:
 MAX_COLS, MAX_ROWS = 78, 26        # what the prompt asks for
 AUDIT_COLS, AUDIT_ROWS = 88, 32    # what is worth a redraw; small overshoots render fine
 
+# The schema field is named "ascii", and Claude occasionally closes it like the
+# XML tag it is not — glued onto the last line of the drawing or on a line of
+# its own. Neither `|`, so `audit()` never sees it; it just renders as a stray
+# note. Strip it before anything else touches the text.
+_TRAILING_TAG = re.compile(r"</\s*ascii\s*>\s*$", re.IGNORECASE)
+
 
 def repair(ascii_art: str, rounds: int = 8) -> str:
     """Close boxes the model drew a column or two wrong.
@@ -125,6 +131,7 @@ def repair(ascii_art: str, rounds: int = 8) -> str:
     turn asking, snap the box to its own borders and widen it if the label
     overran. Only boxes that failed to parse are touched.
     """
+    ascii_art = _TRAILING_TAG.sub("", ascii_art)
     for _ in range(rounds):
         grid = _grid(ascii_art)
         if not grid:

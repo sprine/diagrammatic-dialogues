@@ -1,0 +1,46 @@
+# boxes=10 edges=12 orphans=0
++------------------+   cookie   +--------------------+
+|  worker/index.ts |----------->|     login.html /   |
+|  (Cloudflare     |   gate     |     dist/ assets   |
+|   Worker, auth)  |----------->|     (Vite build)   |
++------------------+            +--------------------+
+   |  jwt/auth/account/ db/email/turn stile
+   v
++------------------+
+|   D1 + Resend    |
++------------------+
+
+           client  bundle
+                 |
+                 v
++-----------------------------------------------------+
+|                 core/ App.ts  (loop)                |
+|  tweens ->  FrameGate.planFrame ->  vacuole/er/pd/  |
+|  stress/nucleus ->   substep(manager+extensions) -> |
+| autophagy/streamingVi z/contacts/tr acking/division |
+|      ->  postfx.render -> hud/ethog ram/labels      |
++-----------------------------------------------------+
+     |            |             |             |
+     v            v             v             v
++--------+   +----------+  +----------+  +----------+
+| sim/   |   |structures|  |organelles|  | render/  |
+| Stress |   | ER,Vac,  |  |Organelle |  |material, |
+| Flow   |   | Nucleus, |  |  Field/  |  |Contacts, |
+| Vacuole|   | PM,Cyto  |  |Extension |  | PostFX,  |
+| Model  |   | skeleton |  | Manager  |  |Streaming |
++--------+   +----------+  +----------+  +----------+
+     \            |             |             /
+      \___________|____ ________|____ _______/
+                   |
+                   v
+          +--------------------+
+          |  SimState  (shared |
+          |    contract, thaw) |
+          +--------------------+
+                   ^
+                   |
+          +--------------------+
+          | ui/ Gui,  Hud,     |
+          | Scenes,  Settings  |
+          +--------------------+
+</ascii>

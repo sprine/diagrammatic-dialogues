@@ -157,6 +157,22 @@ def test_repair_widens_a_box_its_label_overran():
     assert [n.label for n in fixed.nodes] == ["PuzzleEngine"]
 
 
+def test_repair_strips_a_trailing_closing_tag_glued_to_text():
+    # Claude occasionally closes the "ascii" schema field like the XML tag it
+    # is not — see tests/samples/trailing-ascii-tag-glued.txt for a real capture.
+    art = "+--------+\n| Client |\n+--------+\nnote below</ascii>"
+    fixed = repair(art)
+    assert "ascii" not in fixed
+    assert "note below" in fixed
+
+
+def test_repair_strips_a_trailing_closing_tag_on_its_own_line():
+    art = "+--------+\n| Client |\n+--------+\n</ascii>"
+    fixed = repair(art)
+    assert "ascii" not in fixed
+    assert [n.label for n in parse(fixed).nodes] == ["Client"]
+
+
 def test_repair_straightens_a_box_that_drifted_a_column():
     # bottom border and last rows shifted right by one, junction in the border
     broken = (
