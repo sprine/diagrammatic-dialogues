@@ -1,4 +1,4 @@
-# Speak to me in Diagrams
+<img src="docs/logo.svg" alt="Speak to me in Diagrams" width="500">
 
 Open a codebase, get a sketch of it, and point at anything that looks wrong.
 Every question you ask leaves a numbered flag on the diagram it was asked about,
