@@ -76,3 +76,8 @@ words fit. `src/prompts.py:DRAWING_RULES` is the wording that works.
 
 After rendering, run `audit()`. Anything it returns is a box the reader will
 never see, which is worth a redraw rather than shipping a diagram with holes.
+
+To teach the model a shape it does not currently draw — and to make the parser
+read it back — follow `docs/adding-a-pattern.md`. Prove the parser first, then
+add the example, then capture a real turn to see what the model does with it.
+`tests/samples/` holds the drawings collected that way.

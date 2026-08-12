@@ -1,0 +1,28 @@
+# boxes=6 edges=5 orphans=0
+
++-----------+  GET/POST   +----------------------+
+| browser   |------------>|   src/web.py         |
+| index.html|<------------|   FastAPI app        |
+| app.js    |   SSE       |   JOBS dict (Job)     |
++-----------+   events    +----------------------+
+                            |     |          |
+                write, run  |     | prompts   | persist
+                subprocess  v     v           v
+              +-----------------+   +------------------+
+              | src/claude_cli  |   |   src/models.py  |
+              | spawns `claude  |   |  SQLite: trail,  |
+              | -p` CLI, parses |   |  card (lineage)  |
+              | stream-json     |   +------------------+
+              +-----------------+
+                      |
+                      | ascii diagram text
+                      v
+              +-----------------+     +------------------+
+              | src/asciigrid.py|---->|   src/sketch.py  |
+              | parse/repair/   |     | render(): SVG    |
+              | audit grid      |     | hand-drawn wobble|
+              +-----------------+     +------------------+
+                                              |
+                                              v
+                                        back into web.py
+                                        api_view response

@@ -259,3 +259,53 @@ def test_fatal_catches_a_box_whose_stray_pipes_read_as_wiring():
     assert len(parse(broken).nodes) < 2
     assert audit(broken, fatal_only=True)
     assert len(parse(repair(broken)).nodes) == 2
+
+
+def test_a_caption_wrapped_over_two_lines_keeps_the_connector():
+    d = parse(
+        """
++-------+
+|   a   |
++---+---+
+    |
+ q.put_nowait(event) per
+ subscriber queue
+    v
++-------+
+|   b   |
++-------+
+"""
+    )
+    assert len(d.edges) == 1
+    assert d.edges[0].label == "q.put_nowait(event) per subscriber queue"
+    assert d.notes == []
+
+
+def test_a_caption_between_the_arrow_and_its_box_still_lands():
+    d = parse(
+        """
++-------+
+|   a   |
++---+---+
+    v
+ GET /things/{id}
++---------+
+|    b    |
++---------+
+"""
+    )
+    assert len(d.edges) == 1
+    assert "GET /things" in d.edges[0].label
+
+
+def test_text_under_a_horizontal_arrow_is_not_a_vertical_caption():
+    # the label belongs to the arrow above it; nothing should be joined downward
+    d = parse(
+        """
++-------+           +-------+
+|   a   |<----------|   b   |
+|       |    SSE    |       |
++-------+   events  +-------+
+"""
+    )
+    assert [(e.source, e.target) for e in d.edges] == [(d.nodes[1].id, d.nodes[0].id)]

@@ -430,20 +430,59 @@ def _wire_mask(grid, border, inside, rows, cols):
                 wire[y][i] = True
             labels[(s, y)] = m.group(1).strip()
 
-    # Same idea vertically: a caption written across a descending connector.
+    # Same idea vertically: a caption written across a descending connector. It
+    # may wrap over several lines, and need not cover the connector's own column.
     for y in range(1, rows - 1):
         for x in range(cols):
-            if wire[y][x] or border[y][x] or inside[y][x] or not grid[y][x].strip():
+            # Only hang off a vertical run: text under a horizontal arrow is that
+            # arrow's own label, not a caption on some connector passing through.
+            if not wire[y - 1][x] or grid[y - 1][x] not in "|+v^\\/":
                 continue
-            if not (wire[y - 1][x] and wire[y + 1][x]):
+            if wire[y][x] or border[y][x] or inside[y][x]:
                 continue
-            s, e = _text_span(grid, border, inside, y, x, cols)
-            if e - s > 40:
+            spans, caption = [], []
+            for y2 in range(y, min(y + _CAPTION_ROWS + 1, rows)):
+                if wire[y2][x] or border[y2][x] or free[y2][x]:
+                    # An arrowhead stranded between two captions was pruned as
+                    # isolated; the caption is the evidence that it belongs.
+                    wire[y2][x] = wire[y2][x] or free[y2][x]
+                    break
+                span = _caption_span(grid, border, inside, y2, x, cols)
+                if span is None:
+                    spans = []
+                    break
+                spans.append((y2, span))
+            else:
+                spans = []  # ran out of rows without meeting the wire again
+            if not spans or sum(e - s for _, (s, e) in spans) > 60:
                 continue
-            for i in range(s, e + 1):
-                wire[y][i] = True
-            labels[(s, y)] = "".join(grid[y][s : e + 1]).strip()
+            for y2, (s, e) in spans:
+                for i in range(s, e + 1):
+                    wire[y2][i] = True
+                wire[y2][x] = True  # the connector passes behind the words
+                caption.append("".join(grid[y2][s : e + 1]).strip(" |+v^<>-_\\/"))
+            labels[(x, spans[0][0])] = " ".join(w for w in caption if w)
     return wire, labels
+
+
+_CAPTION_ROWS = 3
+_CAPTION_REACH = 12
+
+
+def _caption_span(grid, border, inside, y, x, cols):
+    """The phrase on this row nearest column x, or None if the row is bare."""
+    if border[y][x] or inside[y][x]:
+        return None
+    at = next(
+        (
+            i
+            for d in range(_CAPTION_REACH)
+            for i in (x - d, x + d)
+            if 0 <= i < cols and grid[y][i].strip() and not border[y][i] and not inside[y][i]
+        ),
+        None,
+    )
+    return None if at is None else _text_span(grid, border, inside, y, at, cols)
 
 
 def _text_span(grid, border, inside, y, x, cols):

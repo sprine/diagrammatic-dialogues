@@ -22,8 +22,14 @@ src/claude_cli.py  drives `claude -p`, streams progress, redraws a broken diagra
 src/prompts.py     the drawing contract, the output schema, the depth ladder
 src/models.py      SQLite; a trail is a rooted tree of cards
 src/web.py         FastAPI + SSE; renders each card's SVG server-side
+src/capture.py     dev tool: run one real turn, file the ascii as a parser sample
 static/app.js      the strip, the composer, the live event stream
+tests/samples/     real model drawings, pinned to golden counts
 ```
+
+Teaching Claude a new shape — a fan-in, a decision branch, a swimlane — means
+changing a worked example *and* the parser that reads it back, in that order.
+See `docs/adding-a-pattern.md`.
 
 One card is one `claude` turn. A child resumes its parent's session with
 `--fork-session`, so branching off an old flag inherits that branch's context

@@ -1,0 +1,38 @@
+# boxes=5 edges=4 orphans=0
+
++--------------+ stdout: stream_json lines  +----------------+
+|claude_cli.py |---------------------------->|   web.py       |
+| `claude -p`  |  {kind:note/activity/       |  _drive()      |
+| subprocess   |   result/error}             |  async for     |
++--------------+                             |  event in run()|
+                                              +----------------+
+                                                     |
+                                          job.emit(event)
+                                                     v
+                                              +----------------+
+                                              |  Job            |
+                                              |  .events: list  |
+                                              |  .subscribers:  |
+                                              |   set[Queue]    |
+                                              +----------------+
+                                                     |
+                                        q.put_nowait(event) per
+                                        subscriber queue
+                                                     v
+                                     GET /api/stream/{card_id}
+                                     +----------------+
+                                     | api_stream()    |
+                                     | job.subscribe() |
+                                     | yields _sse()   |
+                                     +----------------+
+                                                     |
+                                     StreamingResponse
+                                     "data: {json}\n\n"
+                                                     v
+                                     +----------------+
+                                     | static/app.js   |
+                                     | new EventSource |
+                                     | (line 333)      |
+                                     | .onmessage      |
+                                     | (line 336)      |
+                                     +----------------+

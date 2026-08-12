@@ -91,7 +91,7 @@ async def run(*, prompt: str, target: Path, model: str, effort: str, write: bool
     cost = elapsed = 0.0
 
     for attempt in range(2):
-        async for event in _turn(
+        async for event in one_turn(
             prompt=prompt, target=target, model=model, effort=effort,
             write=write, resume=resume,
         ):
@@ -137,8 +137,12 @@ async def run(*, prompt: str, target: Path, model: str, effort: str, write: bool
     }
 
 
-async def _turn(*, prompt: str, target: Path, model: str, effort: str, write: bool, resume: str | None):
-    """One CLI invocation: activity events, then a single 'result' or 'error'."""
+async def one_turn(*, prompt: str, target: Path, model: str, effort: str, write: bool, resume: str | None):
+    """One CLI invocation: activity events, then a single 'result' or 'error'.
+
+    The ascii comes back exactly as the model drew it — no repair, no redraw.
+    `src/capture.py` depends on that to collect honest parser samples.
+    """
     argv = _argv(model=model, effort=effort, target=target, write=write, resume=resume)
     try:
         proc = await asyncio.create_subprocess_exec(

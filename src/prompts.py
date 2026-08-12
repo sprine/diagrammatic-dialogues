@@ -61,6 +61,19 @@ GOOD
                         |  executor.py |
                         +--------------+
 
+GOOD  (several boxes fanning into one)
+ +--------+  +--------+  +---------+
+ | puzzle |  |  spot  |  | browser |
+ +---+----+  +---+----+  +----+----+
+     \\           |            /
+      \\__________|___________/
+                 |
+        every screen reads
+                 v
+        +------------------+
+        |  gallery store   |
+        +------------------+
+
 BAD  (arrow detached, label loose on the line, box overflowing)
 +-----------+           +--------------+
 |  cli.py   | ---> reads |  planner.py |
