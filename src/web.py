@@ -184,6 +184,79 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
     return {"card_id": child_id}
 
 
+@app.post("/api/cards/{card_id}/rerun")
+async def api_rerun(card_id: str):
+    """Same remark, same anchor, run again against the code as it stands now.
+
+    Whatever was asked further down this branch was asked of a diagram that is
+    about to stop existing, so it is discarded along with it — same as any
+    other redraw invalidating the flags planted on it.
+    """
+    with db() as conn:
+        row = conn.execute("SELECT * FROM card WHERE id = ?", (card_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "no such card")
+        card = card_row(row)
+        if card["status"] == "running":
+            raise HTTPException(409, "still running")
+        trail = conn.execute("SELECT * FROM trail WHERE id = ?", (card["trail_id"],)).fetchone()
+        parent = None
+        if card["parent_id"]:
+            prow = conn.execute("SELECT * FROM card WHERE id = ?", (card["parent_id"],)).fetchone()
+            parent = card_row(prow) if prow else None
+
+    if parent:
+        diagram = parse(repair(parent["ascii"]))
+        node = diagram.node(card["anchor_node"]) if card["anchor_node"] else None
+        neighbours = diagram.neighbours(card["anchor_node"]) if node else []
+        prompt = prompts.remark_prompt(parent, card["remark"], card["anchor_label"], neighbours)
+        resume = parent["session_id"]
+    else:
+        prompt = prompts.root_prompt(trail["target_dir"])
+        resume = None
+
+    with db() as conn:
+        conn.execute("DELETE FROM card WHERE parent_id = ?", (card_id,))
+        conn.execute(
+            """UPDATE card SET status='running', title='', ascii='', answer='', points='[]',
+                               error='', evidence='[]', changes='[]', session_id=NULL,
+                               cost_usd=0, duration_ms=0
+               WHERE id=?""",
+            (card_id,),
+        )
+    _launch(
+        card_id,
+        prompt=prompt,
+        target=Path(trail["target_dir"]),
+        model=card["model"],
+        effort=card["effort"],
+        write=card["write_mode"],
+        resume=resume,
+    )
+    return {"ok": True}
+
+
+@app.delete("/api/cards/{card_id}")
+def api_discard(card_id: str):
+    """Drop a branch and everything asked on top of it.
+
+    The root card is the whole trail, so discarding it goes through 'forget
+    this trail' instead — this is only ever a flag someone planted.
+    """
+    with db() as conn:
+        row = conn.execute("SELECT * FROM card WHERE id = ?", (card_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "no such card")
+        if row["parent_id"] is None:
+            raise HTTPException(400, "forget the whole trail instead")
+        parent_id = row["parent_id"]
+        conn.execute("DELETE FROM card WHERE id = ?", (card_id,))  # cascades to its own branches
+    job = JOBS.pop(card_id, None)
+    if job and job.proc and job.proc.returncode is None:
+        job.proc.kill()
+    return {"parent_id": parent_id}
+
+
 @app.get("/api/view/{card_id}")
 def api_view(card_id: str):
     with db() as conn:

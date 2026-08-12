@@ -163,6 +163,10 @@ function cardNode(card, isActive, index) {
   if (card.write_mode) head.appendChild(el('span', 'badge write', 'wrote code'));
   if (isActive && card.status === 'done') head.appendChild(asciiToggle(card));
   head.appendChild(el('span', 'badge', `${card.model} · ${card.effort}`));
+  if (isActive && (card.status === 'done' || card.status === 'error')) {
+    head.appendChild(rerunButton(card));
+    if (card.parent_id) head.appendChild(discardButton(card));
+  }
   node.appendChild(head);
 
   if (card.remark && card.anchor_label) {
@@ -288,6 +292,48 @@ function asciiToggle(card) {
     paint(pill.closest('.card').querySelector('.canvas'), card, true);
   };
   return pill;
+}
+
+// Same remark, run again against the code as it is now. Whatever was asked off
+// this diagram was asked of a picture that is about to stop existing.
+function rerunButton(card) {
+  const btn = el('button', 'badge pill', '↻');
+  btn.type = 'button';
+  btn.title = 'Re-run this against the code as it is now';
+  btn.onclick = async (ev) => {
+    ev.stopPropagation();
+    if (card.flags.length && !confirm('This discards the branches asked from this diagram. Re-run anyway?')) return;
+    btn.disabled = true;
+    try {
+      await post(`/api/cards/${card.id}/rerun`, {});
+      refresh(card.id);
+    } catch (err) {
+      btn.disabled = false;
+      alert(err.message);
+    }
+  };
+  return btn;
+}
+
+// Deletes this card and every branch asked off it. There is no undo, so this
+// asks first the same way the trail list's own delete does.
+function discardButton(card) {
+  const btn = el('button', 'badge pill discard', '×');
+  btn.type = 'button';
+  btn.title = 'Discard this branch and its analysis';
+  btn.onclick = async (ev) => {
+    ev.stopPropagation();
+    if (!confirm('Discard this branch and its analysis? This cannot be undone.')) return;
+    btn.disabled = true;
+    try {
+      const { parent_id } = await api(`/api/cards/${card.id}`, { method: 'DELETE' });
+      go(parent_id);
+    } catch (err) {
+      btn.disabled = false;
+      alert(err.message);
+    }
+  };
+  return btn;
 }
 
 // Reporting belongs next to the ascii: you have to read the source to know

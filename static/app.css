@@ -107,6 +107,7 @@ button { font: inherit; cursor: pointer; }
 .badge.pill:hover { color: var(--ink); border-color: var(--ink); }
 .badge.pill.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .badge.pill:disabled { cursor: wait; opacity: 0.6; }
+.badge.pill.discard:hover { color: var(--flag); border-color: var(--flag); }
 
 /* Filing a bad render, shown only beside the ascii that produced it. */
 .report { display: flex; gap: 8px; align-items: center; margin-top: 10px; width: 100%; }
