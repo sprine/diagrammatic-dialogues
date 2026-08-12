@@ -45,6 +45,7 @@ If it does not read correctly, fix `asciigrid.py` now. The knobs, roughly:
 | a character is dropped as "not part of a structure" | `_NEEDS` |
 | diagonals do not join up | `_SLOPE`, `_linked` |
 | text on a connector splits it in two | `_INLINE_LABEL`, `_caption_span` |
+| text on a connector disappears | `_stranded` — no edge claimed the label |
 | a box does not close | `repair`, `_first_broken_box` |
 
 Every entry in those is there because a model really drew it that way. Keep that

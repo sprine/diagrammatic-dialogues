@@ -103,9 +103,10 @@ def parse(ascii_art: str) -> Diagram:
     _label_boxes(grid, nodes, inside)
     _nest(nodes)
 
-    wire, inline_labels = _wire_mask(grid, border, inside, rows, cols)
-    edges = _find_edges(grid, wire, border, nodes, rows, cols, inline_labels)
+    wire, labels = _wire_mask(grid, border, inside, rows, cols)
+    edges, claimed = _find_edges(grid, wire, border, nodes, rows, cols, labels)
     notes = _find_notes(grid, border, inside, wire, rows, cols)
+    notes += _stranded(labels, claimed, len(notes))
     notes = _attach_labels(notes, edges)
 
     return Diagram(cols=cols, rows=rows, nodes=nodes, edges=edges, notes=notes)
@@ -404,7 +405,9 @@ def _wire_mask(grid, border, inside, rows, cols):
     hyphen in "read-only" is not a connector.
 
     Inline edge labels are bridged afterwards so `--auth-->` stays one connector
-    instead of splitting into two dangling stubs."""
+    instead of splitting into two dangling stubs. Each one is kept as the caption
+    it was before the bridge, because a connector that turns out to reach only
+    one box makes no edge, and its words have to come back — see `_stranded`."""
     free = [
         [grid[y][x] in _WIRE and not border[y][x] and not inside[y][x] for x in range(cols)]
         for y in range(rows)
@@ -420,7 +423,7 @@ def _wire_mask(grid, border, inside, rows, cols):
                     wire[y][x] = True
                     break
 
-    labels: dict[tuple[int, int], str] = {}
+    labels: dict[tuple[int, int], Note] = {}
     for y in range(rows):
         line = "".join(grid[y])
         for m in _INLINE_LABEL.finditer(line):
@@ -431,7 +434,9 @@ def _wire_mask(grid, border, inside, rows, cols):
                 continue  # only bridge text that sits between two live wires
             for i in range(s, e):
                 wire[y][i] = True
-            labels[(s, y)] = m.group(1).strip()
+            text = m.group(1).strip()
+            lead = len(m.group(1)) - len(m.group(1).lstrip())
+            labels[(s, y)] = Note(id="", text=text, x=s + lead, y=y, w=len(text), h=1)
 
     # Same idea vertically: a caption written across a descending connector. It
     # may wrap over several lines, and need not cover the connector's own column.
@@ -464,7 +469,14 @@ def _wire_mask(grid, border, inside, rows, cols):
                     wire[y2][i] = True
                 wire[y2][x] = True  # the connector passes behind the words
                 caption.append("".join(grid[y2][s : e + 1]).strip(" |+v^<>-_\\/"))
-            labels[(x, spans[0][0])] = " ".join(w for w in caption if w)
+            labels[(x, spans[0][0])] = Note(
+                id="",
+                text="\n".join(w for w in caption if w),
+                x=min(s for _, (s, _) in spans),
+                y=spans[0][0],
+                w=max(e - s + 1 for _, (s, e) in spans),
+                h=len(spans),
+            )
     return wire, labels
 
 
@@ -531,7 +543,9 @@ def _components(grid, wire, rows, cols):
             yield comp
 
 
-def _find_edges(grid, wire, border, nodes, rows, cols, inline_labels) -> list[Edge]:
+def _find_edges(grid, wire, border, nodes, rows, cols, labels) -> tuple[list[Edge], set]:
+    """Edges, and the label keys that landed on one. The leftovers matter: a
+    label is masked as wire, so one nobody claims is text nobody ever sees."""
     owner = {}
     for n in nodes:
         x, y, x2, y2 = n.cells()
@@ -541,6 +555,7 @@ def _find_edges(grid, wire, border, nodes, rows, cols, inline_labels) -> list[Ed
             owner[(x, j)] = owner[(x2, j)] = n.id
 
     edges: list[Edge] = []
+    claimed: set = set()
     for comp in _components(grid, wire, rows, cols):
         cells = set(comp)
         # attachments: (node_id) -> (wire cell, border cell, arrow points into node)
@@ -568,7 +583,10 @@ def _find_edges(grid, wire, border, nodes, rows, cols, inline_labels) -> list[Ed
         elif not targets:
             sources, targets = sources[:1], sources[1:]
 
-        label = next((t for (lx, ly), t in inline_labels.items() if (lx, ly) in cells), "")
+        key = next((k for k in labels if k in cells), None)
+        if key is not None:
+            claimed.add(key)
+        label = labels[key].text.replace("\n", " ") if key is not None else ""
         src = sources[0]
         for tgt in targets:
             path = trace(attach[src][0], attach[tgt][0])
@@ -595,7 +613,22 @@ def _find_edges(grid, wire, border, nodes, rows, cols, inline_labels) -> list[Ed
                         label=label,
                     )
                 )
-    return edges
+    return edges, claimed
+
+
+def _stranded(labels, claimed, offset: int) -> list[Note]:
+    """Words bridged into a connector that no edge ever claimed.
+
+    Bridging masks the words as wire so they do not split the run they sit on.
+    That is a good trade while the run becomes an edge, and a silent deletion
+    when it does not — a connector reaching only one box makes no edge, and its
+    caption disappears from a picture the ascii still shows. Hand it back as the
+    caption it was, which is what a reader would have made of it anyway.
+    """
+    out = [n for key, n in labels.items() if key not in claimed and n.text]
+    for i, note in enumerate(out):
+        note.id = f"t{offset + i}"
+    return out
 
 
 def _trace(cells, grid, rows, cols, start, goal) -> list[tuple[int, int]]:

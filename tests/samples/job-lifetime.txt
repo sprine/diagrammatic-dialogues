@@ -1,0 +1,26 @@
+# boxes=2 edges=1 orphans=0
++---------------------------------------------+
+|             web.py module scope             |
+|                                             |
+| JOBS: dict[str, Job] = {}  <- lives forever |
++---------------------------------------------+
+                      |
+                      | _launch(card_id)
+                      v
+               +-------------+
+               | Job         |
+               | .events     |  <- grows while
+               | .subscribers|     turn runs
+               | .finished   |
+               +------+------+
+                      |
+             _drive() | streams events,
+                      | calls job.emit()
+                      v
+             finally: job.finished = True
+                      |
+                      X   no JOBS.pop(card_id)
+                      |   anywhere in web.py
+                      v
+             entry + its .events list
+             stay in JOBS forever
