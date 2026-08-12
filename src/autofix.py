@@ -9,6 +9,10 @@ It edits and commits, so the guardrails are the point:
   * it works in this repo only, never the codebase being analysed;
   * it refuses to start on a dirty tree, so a revert can never eat your work;
   * a commit happens only if the suite passes, and a failure is reverted whole;
+  * it cannot reach git, and it cannot spawn subagents. Both are learned rather
+    than assumed: the first real dispatch used Bash to make its own unrelated
+    commit through a Sonnet subagent, past a prompt that told it not to. A
+    prompt is not a guardrail;
   * it never pushes.
 """
 
@@ -25,8 +29,15 @@ SELF = Path(__file__).resolve().parent.parent
 LOG = SELF / "autofix.log"
 CLAUDE = shutil.which("claude") or "claude"
 MODEL, EFFORT = "opus", "high"
-CLAUDE_TIMEOUT = 900
+CLAUDE_TIMEOUT = 1800  # a real diagnosis at high effort runs past twenty minutes
 TEST_TIMEOUT = 180
+
+# An allowlist, so reaching git or a subagent is not a matter of it behaving.
+# The suite is the one command it may run; everything else it must do by editing.
+FIX_TOOLS = [
+    "Read", "Glob", "Grep", "Edit", "Write",
+    "Bash(uv run --extra dev python -m pytest:*)",
+]
 
 SCHEMA = {
     "type": "object",
@@ -70,8 +81,9 @@ describes this exact loop and where the knobs are.
 - `uv run --extra dev python -m pytest -q` must pass when you are done. Every
   existing sample must keep its counts — if one changes, you have broken a
   drawing that used to read correctly.
-- Change nothing unrelated. Do not touch the database, git history, or the
-  working tree beyond your fix.
+- Change nothing unrelated. You have no git and no subagents; the runner that
+  dispatched you commits your work if the suite passes and reverts it whole if
+  it does not, so leave the tree containing exactly your fix and nothing else.
 - If the drawing already renders correctly and you cannot find a defect, change
   nothing and say so. A clean no-op is a fine outcome; a speculative edit is not.
 """
@@ -143,12 +155,21 @@ async def run(fix_id: str, card: dict, record) -> None:
         "--model", MODEL,
         "--effort", EFFORT,
         "--json-schema", json.dumps(SCHEMA),
-        "--permission-mode", "acceptEdits",
+        "--allowed-tools", ",".join(FIX_TOOLS),
+        "--disallowed-tools", "Task",
         "--disable-slash-commands",
         "--add-dir", str(SELF),
     ]
     prompt = PROMPT.format(art=art, report=_report(art))
     code, out = await _run(*argv, timeout=CLAUDE_TIMEOUT, stdin=prompt)
+
+    if code != 0:
+        # A run that did not finish cleanly has not decided anything. Committing
+        # a half-finished edit under a summary nobody wrote is worse than losing it.
+        await _revert()
+        record("failed", note=f"claude exited {code}; working tree reverted\n\n{out[-400:]}")
+        _log(fix_id, "reverted", f"claude exited {code}")
+        return
 
     payload, cost, ms = {}, 0.0, 0
     try:
@@ -170,18 +191,17 @@ async def run(fix_id: str, card: dict, record) -> None:
         "uv", "run", "--extra", "dev", "python", "-m", "pytest", "-q", timeout=TEST_TIMEOUT
     )
     if ok != 0:
-        await _git("checkout", "--", ".")
-        await _git("clean", "-fd")
+        await _revert()
         tail = test_out.strip().splitlines()[-6:]
         record("failed", note=f"{summary}\n\nreverted, tests failed:\n" + "\n".join(tail),
                cost_usd=cost, duration_ms=ms)
         _log(fix_id, "reverted", "tests failed")
         return
 
-    files = sorted({line[3:].strip() for line in changed.splitlines() if len(line) > 3})
     await _git("add", "-A")
+    subject = summary.splitlines()[0][:68] if summary else f"repair {card.get('title') or 'a diagram'}"
     message = (
-        f"autofix: {summary.splitlines()[0][:68]}\n\n{summary}\n\n"
+        f"autofix: {subject}\n\n{summary}\n\n"
         f"Dispatched from the bug button on card {card.get('title') or card['id']}.\n"
         f"Tests passed before this was committed.\n\n"
         "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
@@ -192,5 +212,13 @@ async def run(fix_id: str, card: dict, record) -> None:
                cost_usd=cost, duration_ms=ms)
         return
     _, sha = await _git("rev-parse", "--short", "HEAD")
+    _, listing = await _git("show", "--name-only", "--pretty=format:", "HEAD")
+    files = [f for f in listing.splitlines() if f.strip()]
     record("fixed", note=summary, commit_sha=sha, files=files, cost_usd=cost, duration_ms=ms)
     _log(fix_id, "fixed", f"{sha}  {summary[:140]}")
+
+
+async def _revert():
+    """Back to the last commit. Safe only because a dirty tree refused to start."""
+    await _git("checkout", "--", ".")
+    await _git("clean", "-fd")
