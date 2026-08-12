@@ -226,7 +226,7 @@ async def api_rerun(card_id: str):
         conn.execute(
             """UPDATE card SET status='running', title='', ascii='', answer='', points='[]',
                                error='', evidence='[]', changes='[]', session_id=NULL,
-                               cost_usd=0, duration_ms=0
+                               cost_usd=0, duration_ms=0, created_at=datetime('now')
                WHERE id=?""",
             (card_id,),
         )
