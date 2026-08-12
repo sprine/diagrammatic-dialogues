@@ -588,7 +588,15 @@ function listen(cardId) {
       refresh(cardId);
     }
   };
-  stream.onerror = () => { stream?.close(); stream = null; };
+  // A dropped connection does not mean the turn stopped — it runs server-side,
+  // detached from any browser tab. Re-fetch the real state instead of just
+  // going dark: still running, this reconnects; finished while we were gone,
+  // this shows the real result instead of a clock ticking on a dead turn.
+  stream.onerror = () => {
+    stream?.close();
+    stream = null;
+    refresh(cardId);
+  };
 }
 
 route();
