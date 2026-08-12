@@ -311,6 +311,61 @@ def test_text_under_a_horizontal_arrow_is_not_a_vertical_caption():
     assert [(e.source, e.target) for e in d.edges] == [(d.nodes[1].id, d.nodes[0].id)]
 
 
+def test_a_caption_on_a_connector_that_reaches_nothing_stays_text():
+    # bridging masks the words as wire so they do not split the run; this run
+    # reaches only one box, so it becomes no edge and the words go with it
+    d = parse(
+        """
++-------+
+|   a   |
++---+---+
+    |
+ job.finished = True
+    v
+"""
+    )
+    assert d.edges == []
+    assert [n.text for n in d.notes] == ["job.finished = True"]
+
+    # the counter-case: give the run a second box and the caption is its label
+    d = parse(
+        """
++-------+
+|   a   |
++---+---+
+    |
+ job.finished = True
+    v
++-------+
+|   b   |
++-------+
+"""
+    )
+    assert d.edges[0].label == "job.finished = True"
+    assert d.notes == []
+
+
+def test_a_second_caption_on_one_connector_stays_text():
+    # one connector carries one label; whatever it does not take is still text
+    d = parse(
+        """
++-------+
+|   a   |
++---+---+
+    |
+ writes
+    v
+ then reads
++---------+
+|    b    |
++---------+
+"""
+    )
+    assert len(d.edges) == 1
+    assert d.edges[0].label == "writes"
+    assert [n.text for n in d.notes] == ["then reads"]
+
+
 def test_repair_closes_a_box_taller_than_a_few_rows():
     # a component box with many lines of detail; the right border is ragged
     body = "\n".join(f"|  line {i} of detail{' ' * (i % 3)}|" for i in range(9))
