@@ -15,9 +15,12 @@ from html import escape
 
 from .asciigrid import Diagram, parse, repair
 
-ROUGH = 1.15   # architect sloppiness
-ASPECT = 1.8   # cell height / cell width
-PAD = 1.4      # cells of margin around the drawing
+# Drafted, not doodled: a drawn line, but one an architect would put a rule under.
+ROUGH = 0.5
+WOBBLE_GROWTH = 220  # px of length before the wobble grows appreciably
+WOBBLE_CAP = 1.5     # multiples of amp, so long runs stay straight
+ASPECT = 1.8         # cell height / cell width
+PAD = 1.4            # cells of margin around the drawing
 MASK = 0xFFFFFFFF
 
 
@@ -48,7 +51,7 @@ def _n(value: float) -> str:
 def _stroke(x1, y1, x2, y2, rng, amp) -> str:
     dx, dy = x2 - x1, y2 - y1
     length = (dx * dx + dy * dy) ** 0.5 or 1
-    wob = min(amp * (0.5 + length / 90), amp * 2.6)
+    wob = min(amp * (0.4 + length / WOBBLE_GROWTH), amp * WOBBLE_CAP)
     j = lambda: (rng() * 2 - 1) * wob
     mx = (x1 + x2) / 2 + (-dy / length) * j() * 1.2
     my = (y1 + y2) / 2 + (dx / length) * j() * 1.2

@@ -65,6 +65,24 @@ async function loadTrails() {
     row.append(open, del);
     trailList.appendChild(row);
   }
+  loadFixes();
+}
+
+// The autofix log. Every press of a bug button, what came of it, and the commit.
+async function loadFixes() {
+  const fixes = await api('/api/fixes').catch(() => []);
+  const box = $('#fixes');
+  box.replaceChildren();
+  if (!fixes.length) return;
+  box.appendChild(el('h2', 'section', 'autofix'));
+  for (const f of fixes) {
+    const row = el('div', `fix ${f.status}`);
+    row.appendChild(el('span', 'fix-status', FIX_WORDS[f.status] || f.status));
+    row.appendChild(el('span', 'fix-note', f.note || f.card_title));
+    if (f.commit_sha) row.appendChild(el('code', 'fix-sha', f.commit_sha));
+    row.appendChild(el('span', 'fix-when', f.created_at));
+    box.appendChild(row);
+  }
 }
 
 $('#open').onsubmit = async (ev) => {
@@ -144,7 +162,10 @@ function cardNode(card, isActive, index) {
   head.appendChild(el('span', 'step', String(index + 1)));
   head.appendChild(el('h2', null, card.title || (card.status === 'running' ? 'thinking…' : card.remark)));
   if (card.write_mode) head.appendChild(el('span', 'badge write', 'wrote code'));
-  if (isActive && card.status === 'done') head.appendChild(asciiToggle(card));
+  if (isActive && card.status === 'done') {
+    head.appendChild(asciiToggle(card));
+    head.appendChild(bugButton(card));
+  }
   head.appendChild(el('span', 'badge', `${card.model} · ${card.effort}`));
   node.appendChild(head);
 
@@ -271,6 +292,51 @@ function asciiToggle(card) {
     paint(pill.closest('.card').querySelector('.canvas'), card, true);
   };
   return pill;
+}
+
+// "This picture is wrong." Sends a subagent at this app's own source, in the
+// background: it edits, runs the suite, and commits only if it passes.
+const FIX_WORDS = { fixed: 'fixed', no_change: 'no bug found', failed: 'fix failed' };
+
+function bugButton(card) {
+  const pill = el('button', 'badge pill bug', 'bug');
+  pill.type = 'button';
+  pill.title = 'Send a subagent to fix whatever drew this wrong';
+  pill.onclick = async (ev) => {
+    ev.stopPropagation();
+    pill.disabled = true;
+    pill.textContent = 'dispatched';
+    try {
+      const { fix_id } = await post(`/api/cards/${card.id}/bug`, {});
+      watchFix(fix_id, pill);
+    } catch (err) {
+      pill.textContent = 'bug';
+      pill.disabled = false;
+      pill.classList.add('warn');
+      pill.title = err.message;
+    }
+  };
+  return pill;
+}
+
+async function watchFix(fixId, pill) {
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 4000));
+    let fix;
+    try {
+      fix = await api(`/api/fixes/${fixId}`);
+    } catch {
+      return;
+    }
+    if (fix.status === 'running') continue;
+    pill.textContent = FIX_WORDS[fix.status] || fix.status;
+    pill.classList.toggle('warn', fix.status === 'failed');
+    pill.classList.toggle('on', fix.status === 'fixed');
+    pill.title = (fix.commit_sha ? `${fix.commit_sha} — ` : '') + fix.note;
+    pill.disabled = false;
+    pill.onclick = (ev) => { ev.stopPropagation(); location.reload(); };
+    return;
+  }
 }
 
 function wire(root, isActive) {
