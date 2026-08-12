@@ -76,6 +76,15 @@ worst possible lie for this app.
 **Model and effort reach a subprocess argv.** They are chosen from
 `prompts.MODELS`/`EFFORTS`, never passed through from the client.
 
+**A card's answer is a lead plus points, not a paragraph.** `OUTPUT_SCHEMA` asks
+for both and the footer renders them separately — a blob of prose is unreadable
+at a glance, which defeats a tool built around glancing. `DRAWING_RULES` also
+pitches the answer at what the reader has shown they understand, which works
+because a child card resumes its parent's session and can see the whole trail.
+
+**New columns go in `models.ADDED_COLUMNS`.** `CREATE TABLE IF NOT EXISTS` will
+not widen an existing table, and a trail is worth keeping across a schema change.
+
 **The parser is where the sharp edges are**, so that is what the tests cover. Any
 change to grammar tolerance (`_WIRE`, `_NEEDS`, `repair`) needs a test built from
 real model output, not a hand-written ideal case — every rule in there exists

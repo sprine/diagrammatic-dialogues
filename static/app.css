@@ -127,10 +127,22 @@ button { font: inherit; cursor: pointer; }
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
 }
 .answer p { margin: 0; font-size: 12px; }
+.answer .lead { font-size: 12.5px; }
 .answer .clamped {
-  display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden;
 }
-.card.mini .answer p { font-size: 11px; color: var(--ink-soft); -webkit-line-clamp: 3; }
+.points {
+  margin: 7px 0 0; padding: 0; list-style: none;
+  display: grid; gap: 4px; font-size: 11.5px; color: var(--ink-soft);
+}
+.points li { padding-left: 15px; position: relative; }
+.points li::before {
+  content: "·"; position: absolute; left: 4px; color: var(--flag); font-weight: 700;
+}
+.card.mini .answer { font-size: 11px; color: var(--ink-soft); }
+.card.mini .answer p { font-size: 11px; color: var(--ink-soft); }
+.card.mini .answer .clamped { -webkit-line-clamp: 4; }
+.card.mini .points { display: none; }
 
 /* ------------------------------------------------------------- receipt */
 .receipt { font-size: 11px; color: var(--ink-soft); }

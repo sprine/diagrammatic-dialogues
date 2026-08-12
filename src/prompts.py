@@ -14,10 +14,19 @@ OUTPUT_SCHEMA = {
         "ascii": {"type": "string", "description": "the ASCII diagram, obeying the drawing rules"},
         "answer": {
             "type": "string",
-            "description": "At most 90 words. What the diagram shows and what you verified, citing file paths.",
+            "description": "One or two sentences answering the question directly. At most 40 words.",
+        },
+        "points": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 4,
+            "description": (
+                "Up to 4 supporting specifics, one line each, at most 20 words each. "
+                "Every one names a real file, symbol or line range you read. None repeats the answer."
+            ),
         },
     },
-    "required": ["title", "ascii", "answer"],
+    "required": ["title", "ascii", "answer", "points"],
     "additionalProperties": False,
 }
 
@@ -80,11 +89,25 @@ BAD  (arrow detached, label loose on the line, box overflowing)
 +-----------+           +--------------+
 
 ANSWER
-- 90 words at the outside. Plain and specific. Name the real files you read.
-  The diagram carries the structure; the answer carries only what it cannot.
+- Lead with one or two sentences answering the question directly. Then the
+  supporting specifics as separate points, one line each.
+- The diagram carries the structure; the answer carries only what it cannot.
+  Never write a paragraph where four points would do.
 - Say what you verified and what you are inferring. If the code does something
   the obvious design would not, say so — that is the whole point of this tool.
 - Never claim something you did not read. "I did not check X" is a good answer.
+
+PITCH
+- Write for the person asking, judged from the questions they have asked so far
+  in this conversation. "What happens here?" and "is that the decision I would
+  have taken?" come from readers at different altitudes and deserve different
+  answers — the second already knows what the code does and wants the trade-off.
+- Do not re-explain what an earlier turn established, and do not define a term
+  they have already used correctly. Spend the words on what is new to them.
+- If their questions show they are new to this area, say what a thing is before
+  saying what is wrong with it. If they are plainly fluent, skip to the specifics.
+- On the opening diagram you have nothing to go on. Assume a capable engineer
+  who has not seen this codebase before.
 """
 
 _ROOT_TASK = """\

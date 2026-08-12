@@ -41,7 +41,6 @@ class Job:
         self.events: list[dict] = []
         self.subscribers: set[asyncio.Queue] = set()
         self.proc = None
-        self.finished = False
 
     def emit(self, event: dict):
         self.events.append(event)
@@ -283,7 +282,9 @@ async def _drive(card_id: str, job: Job, **kwargs):
         _persist(card_id, event)
         job.emit(event)
     finally:
-        job.finished = True
+        # Only in-flight turns stay resident. Subscribers already hold the job,
+        # and a client that arrives after this gets 'idle' and refetches.
+        JOBS.pop(card_id, None)
 
 
 def _persist(card_id: str, event: dict):
@@ -295,11 +296,11 @@ def _persist(card_id: str, event: dict):
             )
             return
         conn.execute(
-            """UPDATE card SET status='done', title=?, ascii=?, answer=?, evidence=?,
-                               changes=?, session_id=?, cost_usd=?, duration_ms=?
+            """UPDATE card SET status='done', title=?, ascii=?, answer=?, points=?,
+                               evidence=?, changes=?, session_id=?, cost_usd=?, duration_ms=?
                WHERE id=?""",
             (
-                event["title"], event["ascii"], event["answer"],
+                event["title"], event["ascii"], event["answer"], json.dumps(event["points"]),
                 json.dumps(event["evidence"]), json.dumps(event["changes"]),
                 event["session_id"], event["cost_usd"], event["duration_ms"], card_id,
             ),

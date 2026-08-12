@@ -129,6 +129,7 @@ async def run(*, prompt: str, target: Path, model: str, effort: str, write: bool
         "title": final["title"],
         "ascii": final["ascii"],
         "answer": final["answer"],
+        "points": final["points"],
         "evidence": evidence,
         "changes": changes,
         "session_id": final["session_id"],
@@ -243,6 +244,7 @@ async def one_turn(*, prompt: str, target: Path, model: str, effort: str, write:
             "title": _clean(payload.get("title")) or "untitled",
             "ascii": payload.get("ascii") or "",
             "answer": _clean(payload.get("answer")),
+            "points": [p for p in map(_clean, payload.get("points") or []) if p][:4],
             "session_id": result.get("session_id"),
             "cost_usd": result.get("total_cost_usd") or 0.0,
             "duration_ms": result.get("duration_ms") or 0,
@@ -280,7 +282,8 @@ def _unescape(fragment: str | None) -> str:
 
 
 def _clean(text) -> str:
-    return _SCAFFOLD.sub("", text or "").strip()
+    # Backticks mark code against prose; the whole interface is already mono.
+    return _SCAFFOLD.sub("", text or "").replace("`", "").strip()
 
 
 def _salvage(text) -> dict | None:

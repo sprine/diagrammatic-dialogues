@@ -132,6 +132,7 @@ function render() {
   });
   const active = cards[cards.length - 1];
   if (active.status === 'done') strip.appendChild(composer(active));
+  addMoreToggles();
   strip.scrollLeft = strip.scrollWidth;
 }
 
@@ -182,24 +183,40 @@ function cardNode(card, isActive, index) {
     node.onclick = (ev) => { if (!ev.target.closest('.flag,[data-toggle]')) go(card.id); };
   }
 
-  if (card.answer) {
-    const foot = el('footer', 'answer');
-    const text = el('p', 'clamped', card.answer);
-    foot.appendChild(text);
-    if (isActive && card.answer.length > 320) {
-      const more = el('button', 'ghost', 'more');
-      more.onclick = (ev) => {
-        ev.stopPropagation();
-        text.classList.toggle('clamped');
-        more.textContent = text.classList.contains('clamped') ? 'more' : 'less';
-      };
-      foot.appendChild(more);
-    }
-    node.appendChild(foot);
-  }
+  if (card.answer || card.points.length) node.appendChild(answerNode(card, isActive));
 
   if (card.status === 'done') node.appendChild(receipt(card));
   return node;
+}
+
+// The direct answer, then the specifics that back it. One claim per line reads
+// at a glance in a way a paragraph of the same words does not.
+function answerNode(card, isActive) {
+  const foot = el('footer', 'answer');
+  const body = el('div', 'answer-body clamped');
+  if (card.answer) body.appendChild(el('p', 'lead', card.answer));
+  if (card.points.length) {
+    const list = el('ul', 'points');
+    card.points.forEach((p) => list.appendChild(el('li', null, p)));
+    body.appendChild(list);
+  }
+  foot.appendChild(body);
+  return foot;
+}
+
+// Only offer "more" when something is actually hidden, which is only knowable
+// once the text has been laid out.
+function addMoreToggles() {
+  strip.querySelectorAll('.card.active .answer-body').forEach((body) => {
+    if (body.scrollHeight <= body.clientHeight + 2) return;
+    const more = el('button', 'ghost', 'more');
+    more.onclick = (ev) => {
+      ev.stopPropagation();
+      body.classList.toggle('clamped');
+      more.textContent = body.classList.contains('clamped') ? 'more' : 'less';
+    };
+    body.after(more);
+  });
 }
 
 // What the agent actually touched. The reason this app exists is to not have to
@@ -368,7 +385,8 @@ function listen(cardId) {
       row.appendChild(el('span', 'detail', event.detail));
       target.appendChild(row);
       target.scrollTop = target.scrollHeight;
-    } else if (event.kind === 'done' || event.kind === 'error') {
+    } else if (event.kind === 'idle' || event.kind === 'done' || event.kind === 'error') {
+      // 'idle' means the turn finished before we subscribed; the view has the result.
       clearInterval(clockTimer);
       stream.close();
       stream = null;

@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS card (
     title       TEXT NOT NULL DEFAULT '',
     ascii       TEXT NOT NULL DEFAULT '',
     answer      TEXT NOT NULL DEFAULT '',
+    points      TEXT NOT NULL DEFAULT '[]',       -- json: the supporting specifics
     error       TEXT NOT NULL DEFAULT '',
     evidence    TEXT NOT NULL DEFAULT '[]',        -- json: what the agent actually looked at
     changes     TEXT NOT NULL DEFAULT '[]',        -- json: files written, when write mode is on
@@ -63,15 +64,24 @@ def db():
         conn.close()
 
 
+# CREATE TABLE IF NOT EXISTS will not widen a table that already exists, and a
+# trail is worth keeping across a schema change.
+ADDED_COLUMNS = [("card", "points", "TEXT NOT NULL DEFAULT '[]'")]
+
+
 def init_schema():
     with db() as conn:
         conn.executescript(SCHEMA)
+        for table, column, decl in ADDED_COLUMNS:
+            present = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+            if column not in present:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 
 
 def card_row(row: sqlite3.Row) -> dict:
     d = dict(row)
-    d["evidence"] = json.loads(d.get("evidence") or "[]")
-    d["changes"] = json.loads(d.get("changes") or "[]")
+    for field in ("evidence", "changes", "points"):
+        d[field] = json.loads(d.get(field) or "[]")
     d["write_mode"] = bool(d.get("write_mode"))
     return d
 
