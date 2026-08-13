@@ -133,17 +133,38 @@ function treeRow(card, prefix, isRoot, trailId) {
   link.onclick = () => go(card.id);
   row.appendChild(link);
   row.appendChild(el('span', 'tree-when', (card.created_at || '').slice(0, 10)));
+  const del = el('button', 'tree-del', '×');
+  del.type = 'button';
   if (isRoot) {
-    const del = el('button', 'tree-del', '×');
-    del.type = 'button';
     del.title = 'Forget this trail';
     del.onclick = async (ev) => {
       ev.stopPropagation();
-      await api(`/api/trails/${trailId}`, { method: 'DELETE' });
-      loadHome();
+      if (!confirm('Forget this whole trail? This cannot be undone.')) return;
+      del.disabled = true;
+      try {
+        await api(`/api/trails/${trailId}`, { method: 'DELETE' });
+        loadHome();
+      } catch (err) {
+        del.disabled = false;
+        alert(err.message);
+      }
     };
-    row.appendChild(del);
+  } else {
+    del.title = 'Discard this branch and its analysis';
+    del.onclick = async (ev) => {
+      ev.stopPropagation();
+      if (!confirm('Discard this branch and its analysis? This cannot be undone.')) return;
+      del.disabled = true;
+      try {
+        await api(`/api/cards/${card.id}`, { method: 'DELETE' });
+        loadHome();
+      } catch (err) {
+        del.disabled = false;
+        alert(err.message);
+      }
+    };
   }
+  row.appendChild(del);
   return row;
 }
 
@@ -193,7 +214,8 @@ $('#open').onsubmit = async (ev) => {
   const dir = $('#dir').value.trim();
   button.disabled = true;
   try {
-    const { card_id } = await post('/api/trails', { target_dir: dir });
+    const kind = document.querySelector('input[name="kind"]:checked')?.value || 'code';
+    const { card_id } = await post('/api/trails', { target_dir: dir, kind });
     go(card_id);
   } catch (err) {
     $('#open-error').textContent = err.message;
@@ -264,6 +286,7 @@ function cardNode(card, isActive, index) {
   head.appendChild(el('span', 'step', String(index + 1)));
   head.appendChild(el('h2', null, card.title || (card.status === 'running' ? 'thinking…' : card.remark)));
   if (card.write_mode) head.appendChild(el('span', 'badge write', 'wrote code'));
+  if (card.web_mode) head.appendChild(el('span', 'badge web', 'used the web'));
   if (isActive && card.status === 'done') head.appendChild(asciiToggle(card));
   head.appendChild(el('span', 'badge', `${card.model} · ${card.effort}`));
   if (isActive && (card.status === 'done' || card.status === 'error')) {
@@ -509,13 +532,25 @@ function composer(card) {
   const depth = card.depth + 1;
   const model = select('model', CHOICES.models, suggested(depth)[0]);
   const effort = select('effort', CHOICES.efforts, suggested(depth)[1]);
+  controls.append(model, effort);
+  box.appendChild(controls);
+
+  const advanced = el('details', 'advanced');
+  advanced.appendChild(el('summary', null, 'Advanced'));
+  const perms = el('div', 'controls');
   const write = el('label', 'toggle');
   const writeBox = el('input');
   writeBox.type = 'checkbox';
   writeBox.id = 'write';
   write.append(writeBox, el('span', null, 'let it edit files'));
-  controls.append(model, effort, write);
-  box.appendChild(controls);
+  const web = el('label', 'toggle');
+  const webBox = el('input');
+  webBox.type = 'checkbox';
+  webBox.id = 'web';
+  web.append(webBox, el('span', null, 'let it search the web'));
+  perms.append(write, web);
+  advanced.appendChild(perms);
+  box.appendChild(advanced);
 
   const send = el('button', 'send', 'Ask');
   box.appendChild(send);
@@ -532,6 +567,7 @@ function composer(card) {
         model: model.querySelector('select').value,
         effort: effort.querySelector('select').value,
         write: writeBox.checked,
+        web: webBox.checked,
       });
       anchor = null;
       go(card_id);

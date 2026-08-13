@@ -116,13 +116,15 @@ async def api_open(payload: dict = Body(...)):
     if not target.is_dir():
         raise HTTPException(400, f"not a directory: {target}")
     target = target.resolve()
+    # Chosen once, here: every card below resumes this trail's session.
+    kind = payload.get("kind") if payload.get("kind") in prompts.KINDS else "code"
 
     trail_id, card_id = str(uuid.uuid4()), str(uuid.uuid4())
     model, effort = prompts.rung(0)
     with db() as conn:
         conn.execute(
-            "INSERT INTO trail (id, target_dir, title) VALUES (?,?,?)",
-            (trail_id, str(target), target.name),
+            "INSERT INTO trail (id, target_dir, kind, title) VALUES (?,?,?,?)",
+            (trail_id, str(target), kind, target.name),
         )
         conn.execute(
             "INSERT INTO card (id, trail_id, depth, model, effort, remark) VALUES (?,?,0,?,?,?)",
@@ -130,11 +132,13 @@ async def api_open(payload: dict = Body(...)):
         )
     _launch(
         card_id,
-        prompt=prompts.root_prompt(str(target)),
+        prompt=prompts.root_prompt(str(target), kind),
         target=target,
         model=model,
         effort=effort,
         write=False,
+        web=False,
+        docs=kind == "docs",
         resume=None,
     )
     return {"trail_id": trail_id, "card_id": card_id}
@@ -161,6 +165,7 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
     model = payload.get("model") if payload.get("model") in prompts.MODELS else default_model
     effort = payload.get("effort") if payload.get("effort") in prompts.EFFORTS else default_effort
     write = bool(payload.get("write"))
+    web = bool(payload.get("web"))
 
     # Must match what api_view rendered, or the flag resolves to the wrong box.
     diagram = parse(repair(parent["ascii"]))
@@ -173,10 +178,10 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
     with db() as conn:
         conn.execute(
             """INSERT INTO card (id, trail_id, parent_id, depth, remark, anchor_node,
-                                 anchor_label, model, effort, write_mode)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                                 anchor_label, model, effort, write_mode, web_mode)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (child_id, parent["trail_id"], card_id, depth, remark, anchor_node,
-             anchor_label, model, effort, int(write)),
+             anchor_label, model, effort, int(write), int(web)),
         )
     _launch(
         child_id,
@@ -185,6 +190,8 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
         model=model,
         effort=effort,
         write=write,
+        web=web,
+        docs=trail["kind"] == "docs",
         resume=parent["session_id"],
     )
     return {"card_id": child_id}
@@ -218,7 +225,7 @@ async def api_rerun(card_id: str):
         prompt = prompts.remark_prompt(parent, card["remark"], card["anchor_label"], neighbours)
         resume = parent["session_id"]
     else:
-        prompt = prompts.root_prompt(trail["target_dir"])
+        prompt = prompts.root_prompt(trail["target_dir"], trail["kind"])
         resume = None
 
     with db() as conn:
@@ -237,6 +244,8 @@ async def api_rerun(card_id: str):
         model=card["model"],
         effort=card["effort"],
         write=card["write_mode"],
+        web=card["web_mode"],
+        docs=trail["kind"] == "docs",
         resume=resume,
     )
     return {"ok": True}
@@ -282,6 +291,7 @@ def api_view(card_id: str):
                     "status": kid["status"],
                     "on_path": any(c["id"] == kid["id"] for c in chain),
                     "write_mode": kid["write_mode"],
+                    "web_mode": kid["web_mode"],
                 }
                 for n, kid in enumerate(children(conn, card["id"]))
             ]

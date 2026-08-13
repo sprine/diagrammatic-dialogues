@@ -14,6 +14,9 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS trail (
     id          TEXT PRIMARY KEY,
     target_dir  TEXT NOT NULL,
+    -- code | docs: chosen once when the trail is opened, since every card in it
+    -- resumes the same session and inherits the root prompt's framing.
+    kind        TEXT NOT NULL DEFAULT 'code',
     title       TEXT NOT NULL DEFAULT 'untitled',
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -40,6 +43,7 @@ CREATE TABLE IF NOT EXISTS card (
     model       TEXT NOT NULL DEFAULT '',
     effort      TEXT NOT NULL DEFAULT '',
     write_mode  INTEGER NOT NULL DEFAULT 0,
+    web_mode    INTEGER NOT NULL DEFAULT 0,
     session_id  TEXT,
     cost_usd    REAL NOT NULL DEFAULT 0,
     duration_ms INTEGER NOT NULL DEFAULT 0,
@@ -77,7 +81,11 @@ def db():
 
 # CREATE TABLE IF NOT EXISTS will not widen a table that already exists, and a
 # trail is worth keeping across a schema change.
-ADDED_COLUMNS = [("card", "points", "TEXT NOT NULL DEFAULT '[]'")]
+ADDED_COLUMNS = [
+    ("card", "points", "TEXT NOT NULL DEFAULT '[]'"),
+    ("card", "web_mode", "INTEGER NOT NULL DEFAULT 0"),
+    ("trail", "kind", "TEXT NOT NULL DEFAULT 'code'"),
+]
 
 
 def init_schema():
@@ -94,6 +102,7 @@ def card_row(row: sqlite3.Row) -> dict:
     for field in ("evidence", "changes", "points"):
         d[field] = json.loads(d.get(field) or "[]")
     d["write_mode"] = bool(d.get("write_mode"))
+    d["web_mode"] = bool(d.get("web_mode"))
     return d
 
 

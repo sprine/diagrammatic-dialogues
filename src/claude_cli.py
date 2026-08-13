@@ -13,8 +13,9 @@ import re
 import shutil
 from pathlib import Path
 
+from . import pdfcache
 from .asciigrid import audit, repair
-from .prompts import DRAWING_RULES, OUTPUT_SCHEMA, WRITE_NOTE
+from .prompts import DRAWING_RULES, OUTPUT_SCHEMA, WEB_NOTE, WRITE_NOTE, docs_note
 
 CLAUDE = shutil.which("claude") or "claude"
 STREAM_LIMIT = 16 * 1024 * 1024  # stream-json lines carry whole file reads
@@ -26,6 +27,10 @@ READ_ONLY_TOOLS = [
     "Bash(git log:*)", "Bash(git show:*)", "Bash(git diff:*)", "Bash(git blame:*)",
     "Bash(git status:*)", "Bash(ls:*)", "Bash(find:*)", "Bash(wc:*)", "Bash(rg:*)",
 ]
+
+# Opt-in per remark, same as write. Reading the web is not writing anything, but
+# it does leave the material the user pointed at, so it is never on by default.
+WEB_TOOLS = ["WebSearch", "WebFetch"]
 
 _DETAIL = {
     "Read": lambda i: i.get("file_path", ""),
@@ -44,7 +49,13 @@ WRITING_TOOLS = {"Edit", "Write", "NotebookEdit"}
 _SCAFFOLD = re.compile(r"</?(answer|invoke|function_calls|parameter|result|output)[^>]*>")
 
 
-def _argv(*, model: str, effort: str, target: Path, write: bool, resume: str | None) -> list[str]:
+def _argv(
+    *, model: str, effort: str, target: Path, write: bool, web: bool,
+    docs: bool, resume: str | None,
+) -> list[str]:
+    system_prompt = DRAWING_RULES + (WRITE_NOTE if write else "") + (WEB_NOTE if web else "")
+    if docs:
+        system_prompt += docs_note(str(pdfcache.DIR))
     argv = [
         CLAUDE, "-p",
         "--output-format", "stream-json", "--verbose",
@@ -52,14 +63,25 @@ def _argv(*, model: str, effort: str, target: Path, write: bool, resume: str | N
         "--effort", effort,
         "--include-partial-messages",  # so a long silent think still shows something
         "--json-schema", json.dumps(OUTPUT_SCHEMA),
-        "--append-system-prompt", DRAWING_RULES + (WRITE_NOTE if write else ""),
+        "--append-system-prompt", system_prompt,
         "--disable-slash-commands",
         "--add-dir", str(target),
     ]
+    if docs:
+        # The cache lives outside target, so it needs its own grant, and it must
+        # stay writable even on a read-only turn — populating it is not the kind
+        # of edit the write toggle is asking permission for.
+        argv += ["--add-dir", str(pdfcache.DIR)]
     if write:
+        # acceptEdits carries no allowlist, so the web is shut off by name instead.
         argv += ["--permission-mode", "acceptEdits"]
+        if not web:
+            argv += ["--disallowed-tools", ",".join(WEB_TOOLS)]
     else:
-        argv += ["--allowed-tools", ",".join(READ_ONLY_TOOLS)]
+        allowed = READ_ONLY_TOOLS + (WEB_TOOLS if web else [])
+        if docs:
+            allowed = allowed + [f"Write({pdfcache.DIR}/**)"]
+        argv += ["--allowed-tools", ",".join(allowed)]
     if resume:
         argv += ["--resume", resume, "--fork-session"]
     return argv
@@ -79,7 +101,10 @@ geometry. Keep your answer text as it was unless the redraw changes what is true
 """
 
 
-async def run(*, prompt: str, target: Path, model: str, effort: str, write: bool, resume: str | None):
+async def run(
+    *, prompt: str, target: Path, model: str, effort: str,
+    write: bool, web: bool = False, docs: bool = False, resume: str | None,
+):
     """Yield progress events, then exactly one 'done' or 'error' event.
 
     A drawing that fails to parse gets one redraw, continuing the same session so
@@ -93,7 +118,7 @@ async def run(*, prompt: str, target: Path, model: str, effort: str, write: bool
     for attempt in range(2):
         async for event in one_turn(
             prompt=prompt, target=target, model=model, effort=effort,
-            write=write, resume=resume,
+            write=write, web=web, docs=docs, resume=resume,
         ):
             if event["kind"] == "result":
                 final = event["result"]
@@ -119,6 +144,7 @@ async def run(*, prompt: str, target: Path, model: str, effort: str, write: bool
         prompt = REDRAW.format(problems="\n".join(f"- {p}" for p in problems))
         resume = final["session_id"]
         write = False  # the redraw is a drawing fix, never another pass at the code
+        web = False    # nor another pass at the web
 
     if final is None:
         yield {"kind": "error", "message": "claude returned nothing", "evidence": evidence}
@@ -138,13 +164,21 @@ async def run(*, prompt: str, target: Path, model: str, effort: str, write: bool
     }
 
 
-async def one_turn(*, prompt: str, target: Path, model: str, effort: str, write: bool, resume: str | None):
+async def one_turn(
+    *, prompt: str, target: Path, model: str, effort: str,
+    write: bool, web: bool = False, docs: bool = False, resume: str | None,
+):
     """One CLI invocation: activity events, then a single 'result' or 'error'.
 
     The ascii comes back exactly as the model drew it — no repair, no redraw.
     `src/capture.py` depends on that to collect honest parser samples.
     """
-    argv = _argv(model=model, effort=effort, target=target, write=write, resume=resume)
+    if docs:
+        pdfcache.DIR.mkdir(exist_ok=True)
+    argv = _argv(
+        model=model, effort=effort, target=target,
+        write=write, web=web, docs=docs, resume=resume,
+    )
     try:
         proc = await asyncio.create_subprocess_exec(
             *argv,

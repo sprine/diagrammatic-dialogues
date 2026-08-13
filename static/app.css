@@ -38,7 +38,9 @@ button { font: inherit; cursor: pointer; }
 #home { max-width: 640px; margin: 12vh auto; padding: 0 24px; }
 #home h1 { font-size: 22px; letter-spacing: -0.01em; }
 #home .tagline { color: var(--ink-soft); margin: 6px 0 28px; }
-#open { display: flex; gap: 8px; }
+#open { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+#open .kinds { display: flex; gap: 10px; border: 0; margin: 0; padding: 0; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 #dir {
   flex: 1; min-width: 0; font: inherit; padding: 10px 12px;
   border: 1px solid var(--ink-faint); border-radius: 8px; background: var(--card); color: var(--ink);
@@ -121,6 +123,7 @@ button { font: inherit; cursor: pointer; }
   border-radius: 999px; padding: 1px 7px; flex-shrink: 0;
 }
 .badge.write { color: var(--flag); border-color: var(--flag); }
+.badge.web { color: var(--flag); border-color: var(--flag); }
 .badge.pill { background: none; cursor: pointer; letter-spacing: 0.04em; }
 .badge.pill:hover { color: var(--ink); border-color: var(--ink); }
 .badge.pill.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
@@ -231,6 +234,12 @@ button { font: inherit; cursor: pointer; }
 }
 .remark:focus { outline: 2px solid var(--ink); outline-offset: -1px; }
 .controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.advanced { font-size: 11px; }
+.advanced > summary { cursor: pointer; list-style: none; padding: 2px 0; color: var(--ink-soft); letter-spacing: 0.02em; }
+.advanced > summary::-webkit-details-marker { display: none; }
+.advanced > summary::before { content: "▸ "; }
+.advanced[open] > summary::before { content: "▾ "; }
+.advanced .controls { margin-top: 6px; }
 .chip {
   display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--ink-soft);
   border: 1px solid var(--ink-faint); border-radius: 999px; padding: 2px 4px 2px 9px;

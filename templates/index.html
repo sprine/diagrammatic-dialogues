@@ -12,13 +12,18 @@
 
   <main id="home">
     <h1>Diagramatic Dialogues</h1>
-    <p class="tagline">Open a codebase. Get a sketch. Point at anything that looks wrong.</p>
+    <p class="tagline">Open a codebase or a pile of documents. Get a sketch. Point at anything that looks wrong.</p>
     <form id="open">
       <button type="button" id="browse" class="ghost-btn" title="Pick a folder">Browse…</button>
       <input id="dir" name="dir" value="{{ cwd }}" spellcheck="false" autocomplete="off"
              placeholder="or paste an absolute path" aria-label="directory to open">
       <button type="submit">Open</button>
       <input id="dir-picker" type="file" webkitdirectory directory multiple hidden aria-hidden="true" tabindex="-1">
+      <fieldset id="kind" class="kinds">
+        <legend class="visually-hidden">What is in there</legend>
+        <label class="toggle"><input type="radio" name="kind" value="code" checked><span>code</span></label>
+        <label class="toggle"><input type="radio" name="kind" value="docs"><span>documents</span></label>
+      </fieldset>
     </form>
     <p id="open-error" class="error"></p>
     <div id="trails"></div>
