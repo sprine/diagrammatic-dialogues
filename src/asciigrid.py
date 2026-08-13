@@ -101,6 +101,8 @@ def parse(ascii_art: str) -> Diagram:
     nodes = _find_boxes(grid, rows, cols)
     border, inside = _masks(nodes, rows, cols)
     _label_boxes(grid, nodes, inside)
+    nodes = _drop_phantom_boxes(nodes)
+    border, inside = _masks(nodes, rows, cols)
     _nest(nodes)
 
     wire, labels = _wire_mask(grid, border, inside, rows, cols)
@@ -136,7 +138,7 @@ def repair(ascii_art: str, rounds: int = 8) -> str:
         grid = _grid(ascii_art)
         if not grid:
             return ascii_art
-        broken = _first_broken_box(grid, {(n.x, n.y, n.w, n.h) for n in parse(ascii_art).nodes})
+        broken = _first_broken_box(grid, _closed_rects(grid))
         if not broken:
             break
         ascii_art = "\n".join("".join(row).rstrip() for row in _rebuild(grid, *broken))
@@ -259,7 +261,7 @@ def audit(ascii_art: str, diagram: Diagram | None = None, fatal_only: bool = Fal
     # text layer, and a border pair the box finder could not join up. Either one
     # means content the reader will never see.
     stray = {n.y for n in diagram.notes if "|" in n.text}
-    unclosed = _first_broken_box(grid, {(n.x, n.y, n.w, n.h) for n in diagram.nodes})
+    unclosed = _first_broken_box(grid, _closed_rects(grid))
     if unclosed:
         stray.add(unclosed[0])
     for y in sorted(stray)[:4]:
@@ -308,6 +310,37 @@ def _find_boxes(grid, rows, cols) -> list[Node]:
         Node(id=f"n{i}", label="", x=x, y=y, w=x2 - x + 1, h=y2 - y + 1)
         for i, (x, y, x2, y2) in enumerate(found)
     ]
+
+
+def _closed_rects(grid) -> set[tuple[int, int, int, int]]:
+    """Every rectangle the grid already closes, phantom fan-out boxes included.
+
+    Used to tell `_first_broken_box` what not to "fix": a bracket that happens
+    to close a border is not broken just because `_drop_phantom_boxes` later
+    decides it is not a semantic node.
+    """
+    rows = len(grid)
+    cols = len(grid[0]) if rows else 0
+    return {(n.x, n.y, n.w, n.h) for n in _find_boxes(grid, rows, cols)}
+
+
+def _drop_phantom_boxes(nodes: list[Node]) -> list[Node]:
+    """A fan-out bus (a bracket of `+` and `|` dropping several arrows from one
+    box) can close a rectangle by coincidence where two branch stems and a
+    border happen to line up. A real box always carries a label; one that came
+    back blank and encloses nothing is that coincidence, not a box the model
+    drew — so it is read back as wire instead."""
+    contains_another = set()
+    for n in nodes:
+        x, y, x2, y2 = n.cells()
+        for m in nodes:
+            if m.id == n.id:
+                continue
+            mx, my, mx2, my2 = m.cells()
+            if x <= mx and y <= my and x2 >= mx2 and y2 >= my2:
+                contains_another.add(n.id)
+                break
+    return [n for n in nodes if n.label or n.id in contains_another]
 
 
 def _smallest_rect(grid, rows, cols, x, y):

@@ -83,6 +83,20 @@ GOOD  (several boxes fanning into one)
         |  gallery store   |
         +------------------+
 
+GOOD  (one box fanning into several — mirror the shape above, do not draw a
+second border with an extra `+` in the middle under the source box to mark
+where branches leave: it can close into a box of its own that was never
+meant to be one)
+      +------------+
+      |   store    |
+      +------------+
+            |
+            v
+    \\_______|________/
+ +--+--+  +--+--+  +--+--+
+ |  a  |  |  b  |  |  c  |
+ +-----+  +-----+  +-----+
+
 BAD  (arrow detached, label loose on the line, box overflowing)
 +-----------+           +--------------+
 |  cli.py   | ---> reads |  planner.py |

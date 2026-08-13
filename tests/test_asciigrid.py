@@ -252,6 +252,62 @@ def test_underscore_bus_fans_in():
     assert d.notes == []
 
 
+def test_underscore_bus_fans_out():
+    d = parse(
+        """
+      +------------+
+      |   store    |
+      +------------+
+            |
+            v
+    \\_______|________/
+ +--+--+  +--+--+  +--+--+
+ |  a  |  |  b  |  |  c  |
+ +-----+  +-----+  +-----+
+"""
+    )
+    assert {s for s, _ in links(d)} == {"store"}
+    assert {t for _, t in links(d)} == {"a", "b", "c"}
+    assert d.notes == []
+
+
+def test_bracket_fanout_bus_is_not_a_phantom_box():
+    # a model reaching for a table-style bottom border on the fanning box,
+    # `+---------+--------+`, closes a rectangle by coincidence where the
+    # bracket's own stem lines it up with a branch below — see
+    # training-data/2026-08-12T220705Z-image-request-path-through-imagecache.json
+    d = parse(
+        """
++------------------+
+|   localURL       |
++---------+--------+
+          |        |
+   +------+--------+
+   |      |        |
+   v      v        v
++-------+ +-------+ +-------+
+| path  | | disk  | | net   |
++-------+ +-------+ +-------+
+"""
+    )
+    assert "" not in labels(d)
+    assert audit(
+        """
++------------------+
+|   localURL       |
++---------+--------+
+          |        |
+   +------+--------+
+   |      |        |
+   v      v        v
++-------+ +-------+ +-------+
+| path  | | disk  | | net   |
++-------+ +-------+ +-------+
+""",
+        fatal_only=True,
+    ) == []
+
+
 def test_fatal_only_ignores_a_merely_oversized_drawing():
     tall = "\n".join(["+-----+", "|  a  |", "+-----+"] + ["x"] * 40)
     assert any("rows tall" in p for p in audit(tall))
