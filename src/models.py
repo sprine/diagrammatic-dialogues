@@ -85,6 +85,9 @@ ADDED_COLUMNS = [
     ("card", "points", "TEXT NOT NULL DEFAULT '[]'"),
     ("card", "web_mode", "INTEGER NOT NULL DEFAULT 0"),
     ("trail", "kind", "TEXT NOT NULL DEFAULT 'code'"),
+    # A trail rooted on a folder created empty, for this trail, has nothing to
+    # protect yet: every card in it gets write+web access without asking each time.
+    ("trail", "blank", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

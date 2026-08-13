@@ -112,12 +112,19 @@ def api_trails():
 
 @app.post("/api/trails")
 async def api_open(payload: dict = Body(...)):
-    target = Path(payload.get("target_dir", "")).expanduser()
-    if not target.is_dir():
-        raise HTTPException(400, f"not a directory: {target}")
-    target = target.resolve()
+    target = Path(payload.get("target_dir", "")).expanduser().resolve()
     # Chosen once, here: every card below resumes this trail's session.
     kind = payload.get("kind") if payload.get("kind") in prompts.KINDS else "code"
+
+    if target.exists() and not target.is_dir():
+        raise HTTPException(400, f"not a directory: {target}")
+    if not target.exists():
+        if not payload.get("create"):
+            # 404, not 400: the client uses this to offer "create it?" instead
+            # of just failing.
+            raise HTTPException(404, f"no such directory: {target}")
+        target.mkdir(parents=True)
+        return _open_blank(target, kind)
 
     trail_id, card_id = str(uuid.uuid4()), str(uuid.uuid4())
     model, effort = prompts.rung(0)
@@ -144,6 +151,26 @@ async def api_open(payload: dict = Body(...)):
     return {"trail_id": trail_id, "card_id": card_id}
 
 
+def _open_blank(target: Path, kind: str) -> dict:
+    """A folder created empty has nothing to map, so there is no root turn to
+    run: land straight on a blank canvas with the composer. `trail.blank` marks
+    the whole trail so every later card in it gets write+web access without
+    asking each time — there was nothing here to protect in the first place."""
+    trail_id, card_id = str(uuid.uuid4()), str(uuid.uuid4())
+    model, effort = prompts.rung(0)
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO trail (id, target_dir, kind, title, blank) VALUES (?,?,?,?,1)",
+            (trail_id, str(target), kind, target.name),
+        )
+        conn.execute(
+            "INSERT INTO card (id, trail_id, depth, status, model, effort, title) "
+            "VALUES (?,?,0,'done',?,?,?)",
+            (card_id, trail_id, model, effort, target.name),
+        )
+    return {"trail_id": trail_id, "card_id": card_id}
+
+
 @app.post("/api/cards/{card_id}/remark")
 async def api_remark(card_id: str, payload: dict = Body(...)):
     remark = (payload.get("remark") or "").strip()
@@ -164,8 +191,9 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
     default_model, default_effort = prompts.rung(depth)
     model = payload.get("model") if payload.get("model") in prompts.MODELS else default_model
     effort = payload.get("effort") if payload.get("effort") in prompts.EFFORTS else default_effort
-    write = bool(payload.get("write"))
-    web = bool(payload.get("web"))
+    # A blank trail auto-grants both, regardless of what the composer sent.
+    write = bool(payload.get("write")) or bool(trail["blank"])
+    web = bool(payload.get("web")) or bool(trail["blank"])
 
     # Must match what api_view rendered, or the flag resolves to the wrong box.
     diagram = parse(repair(parent["ascii"]))
@@ -228,14 +256,19 @@ async def api_rerun(card_id: str):
         prompt = prompts.root_prompt(trail["target_dir"], trail["kind"])
         resume = None
 
+    # A blank trail auto-grants both, same as a fresh remark would.
+    write = card["write_mode"] or bool(trail["blank"])
+    web = card["web_mode"] or bool(trail["blank"])
+
     with db() as conn:
         conn.execute("DELETE FROM card WHERE parent_id = ?", (card_id,))
         conn.execute(
             """UPDATE card SET status='running', title='', ascii='', answer='', points='[]',
                                error='', evidence='[]', changes='[]', session_id=NULL,
-                               cost_usd=0, duration_ms=0, created_at=datetime('now')
+                               cost_usd=0, duration_ms=0, created_at=datetime('now'),
+                               write_mode=?, web_mode=?
                WHERE id=?""",
-            (card_id,),
+            (int(write), int(web), card_id),
         )
     _launch(
         card_id,
@@ -243,8 +276,8 @@ async def api_rerun(card_id: str):
         target=Path(trail["target_dir"]),
         model=card["model"],
         effort=card["effort"],
-        write=card["write_mode"],
-        web=card["web_mode"],
+        write=write,
+        web=web,
         docs=trail["kind"] == "docs",
         resume=resume,
     )

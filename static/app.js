@@ -29,7 +29,11 @@ function startClock(node, startedAt) {
 const api = async (url, opts) => {
   const res = await fetch(url, opts);
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || res.statusText);
+  if (!res.ok) {
+    const err = new Error(body.error || res.statusText);
+    err.status = res.status;
+    throw err;
+  }
   return body;
 };
 
@@ -186,39 +190,41 @@ function fixesDetails(reports) {
   return details;
 }
 
-// Browsers never hand back a folder's absolute path — only its name and the
-// relative paths of what's inside — so picking one can only fill in a name.
-// If that name matches a directory already opened before, resolve it to the
-// full path it was opened with; otherwise leave it as a name to finish typing.
-$('#browse').onclick = () => $('#dir-picker').click();
-$('#dir-picker').onchange = async () => {
-  const file = $('#dir-picker').files[0];
-  $('#dir-picker').value = '';
-  if (!file) return;
-  const name = (file.webkitRelativePath || file.name).split('/')[0];
-  if (!name) return;
-  const dir = $('#dir');
-  try {
-    const trails = await api('/api/trails');
-    const matches = trails.filter((t) => t.target_dir.replace(/\/+$/, '').split('/').pop() === name);
-    dir.value = matches.length === 1 ? matches[0].target_dir : name;
-  } catch {
-    dir.value = name;
-  }
-  dir.focus();
-};
+async function openTrail(dir, kind, create) {
+  const { card_id } = await post('/api/trails', { target_dir: dir, kind, create });
+  go(card_id);
+}
+
+// A 404 means the path doesn't exist yet — offer to create it and start blank,
+// rather than just failing. Any other error is shown as-is.
+function askToCreate(dir, kind) {
+  const box = $('#open-error');
+  box.replaceChildren(el('span', null, `"${dir}" doesn't exist. `));
+  const create = el('button', 'ghost', 'Create it and start blank');
+  create.type = 'button';
+  create.onclick = async () => {
+    create.disabled = true;
+    try {
+      await openTrail(dir, kind, true);
+    } catch (err) {
+      box.textContent = err.message;
+    }
+  };
+  box.appendChild(create);
+}
 
 $('#open').onsubmit = async (ev) => {
   ev.preventDefault();
   const button = $('#open button');
   const dir = $('#dir').value.trim();
   button.disabled = true;
+  $('#open-error').textContent = '';
   try {
     const kind = document.querySelector('input[name="kind"]:checked')?.value || 'code';
-    const { card_id } = await post('/api/trails', { target_dir: dir, kind });
-    go(card_id);
+    await openTrail(dir, kind, false);
   } catch (err) {
-    $('#open-error').textContent = err.message;
+    if (err.status === 404) askToCreate(dir, document.querySelector('input[name="kind"]:checked')?.value || 'code');
+    else $('#open-error').textContent = err.message;
   } finally {
     button.disabled = false;
   }
@@ -332,7 +338,9 @@ function cardNode(card, isActive, index) {
 
   if (card.answer || card.points.length) node.appendChild(answerNode(card, isActive));
 
-  if (card.status === 'done') node.appendChild(receipt(card));
+  // The synthetic root of a blank trail never actually ran a turn (no
+  // session_id) — a receipt on it would claim work that never happened.
+  if (card.status === 'done' && card.session_id) node.appendChild(receipt(card));
   return node;
 }
 
@@ -508,6 +516,7 @@ function wire(root, isActive) {
 // ---------------------------------------------------------------- composer
 
 function composer(card) {
+  const blank = !!view.trail.blank;
   const box = el('form', 'card composer');
   const head = el('header', 'card-head');
   head.appendChild(el('h2', null, anchor ? `Flag on “${anchor.label}”` : 'Plant a flag'));
@@ -518,9 +527,11 @@ function composer(card) {
     head.appendChild(clear);
   }
   box.appendChild(head);
-  box.appendChild(el('p', 'hint', anchor
-    ? 'Ask about this part, or tell Claude what to change.'
-    : 'Click any box in the diagram to aim at it, or just ask from here.'));
+  box.appendChild(el('p', 'hint', blank
+    ? 'A blank project — say what to build. Edits and the web are on for this whole trail.'
+    : anchor
+      ? 'Ask about this part, or tell Claude what to change.'
+      : 'Click any box in the diagram to aim at it, or just ask from here.'));
 
   const text = el('textarea', 'remark');
   text.id = 'remark';
@@ -535,22 +546,26 @@ function composer(card) {
   controls.append(model, effort);
   box.appendChild(controls);
 
-  const advanced = el('details', 'advanced');
-  advanced.appendChild(el('summary', null, 'Advanced'));
-  const perms = el('div', 'controls');
-  const write = el('label', 'toggle');
-  const writeBox = el('input');
-  writeBox.type = 'checkbox';
-  writeBox.id = 'write';
-  write.append(writeBox, el('span', null, 'let it edit files'));
-  const web = el('label', 'toggle');
-  const webBox = el('input');
-  webBox.type = 'checkbox';
-  webBox.id = 'web';
-  web.append(webBox, el('span', null, 'let it search the web'));
-  perms.append(write, web);
-  advanced.appendChild(perms);
-  box.appendChild(advanced);
+  // A blank trail auto-grants both server-side, so the toggle would be a lie.
+  let writeBox = null, webBox = null;
+  if (!blank) {
+    const advanced = el('details', 'advanced');
+    advanced.appendChild(el('summary', null, 'Advanced'));
+    const perms = el('div', 'controls');
+    const write = el('label', 'toggle');
+    writeBox = el('input');
+    writeBox.type = 'checkbox';
+    writeBox.id = 'write';
+    write.append(writeBox, el('span', null, 'let it edit files'));
+    const web = el('label', 'toggle');
+    webBox = el('input');
+    webBox.type = 'checkbox';
+    webBox.id = 'web';
+    web.append(webBox, el('span', null, 'let it search the web'));
+    perms.append(write, web);
+    advanced.appendChild(perms);
+    box.appendChild(advanced);
+  }
 
   const send = el('button', 'send', 'Ask');
   box.appendChild(send);
@@ -566,8 +581,8 @@ function composer(card) {
         anchor_node: anchor?.node ?? null,
         model: model.querySelector('select').value,
         effort: effort.querySelector('select').value,
-        write: writeBox.checked,
-        web: webBox.checked,
+        write: blank || writeBox.checked,
+        web: blank || webBox.checked,
       });
       anchor = null;
       go(card_id);
