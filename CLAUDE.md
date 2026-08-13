@@ -1,4 +1,4 @@
-# Diagramatic Dialogues
+# Diagrammatic Dialogues
 
 A local tool for reading a codebase you did not write. Claude draws it as a
 diagram; you click a box to plant a flag and ask something; the answer arrives as

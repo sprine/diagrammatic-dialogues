@@ -1,4 +1,4 @@
-"""Diagramatic Dialogues — server.
+"""Diagrammatic Dialogues — server.
 
 State lives in SQLite; live turns live in JOBS. A card's lineage (root -> card)
 is the horizontal strip the user scrolls, and every card's children are the
@@ -75,7 +75,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan, title="Diagramatic Dialogues")
+app = FastAPI(lifespan=lifespan, title="Diagrammatic Dialogues")
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 
 
@@ -448,7 +448,7 @@ def _pick_port(preferred: int) -> int:
 def main():
     port = _pick_port(int(os.environ.get("SID_PORT", DEFAULT_PORT)))
     url = f"http://127.0.0.1:{port}"
-    print(f"Diagramatic Dialogues -> {url}", flush=True)
+    print(f"Diagrammatic Dialogues -> {url}", flush=True)
     if os.environ.get("SID_OPEN", "1") == "1":
         webbrowser.open(url)
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")

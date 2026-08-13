@@ -1,5 +1,5 @@
 [project]
-name = "diagramatic-dialogues"
+name = "diagrammatic-dialogues"
 version = "0.1.0"
 description = "Read a codebase as a sketch, and interrogate it by planting flags on the picture."
 requires-python = ">=3.11"

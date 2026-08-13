@@ -63,7 +63,7 @@ wheels = [
 ]
 
 [[package]]
-name = "diagramatic-dialogues"
+name = "diagrammatic-dialogues"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
