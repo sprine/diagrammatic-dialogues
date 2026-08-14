@@ -272,7 +272,18 @@ function render() {
   crumb.replaceChildren();
   const back = el('button', 'crumb-home', '← trails');
   back.onclick = () => { location.hash = ''; };
-  crumb.append(back, el('span', 'crumb-path', view.trail.target_dir));
+  const rescan = el('button', 'crumb-home', '↻ new map');
+  rescan.type = 'button';
+  rescan.title = 'Draw a fresh top-level architecture diagram for this project, as its own trail';
+  rescan.onclick = async () => {
+    rescan.disabled = true;
+    try {
+      await openTrail(view.trail.target_dir, false);
+    } finally {
+      rescan.disabled = false;
+    }
+  };
+  crumb.append(back, el('span', 'crumb-path', view.trail.target_dir), rescan);
 
   strip.replaceChildren();
   cards.forEach((card, i) => {
