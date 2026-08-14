@@ -1,0 +1,395 @@
+<title>Diagrammatic Dialogues</title>
+<style>
+  :root {
+    --paper: #FDFCF8;
+    --paper-alt: #F4F2EA;
+    --paper-panel: #EFEDE2;
+    --ink: #2B2924;
+    --ink-soft: #676356;
+    --ink-faint: #98937F;
+    --rule: #DFDBC8;
+    --rule-strong: #2B2924;
+    --accent: #B85732;
+    --accent-2: #2E7A63;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper-alt);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    line-height: 1.45;
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .page { max-width: none; margin: 0; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 0.2rem 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+  .topbar .name { color: var(--ink); letter-spacing: 0.02em; }
+  .topbar a { color: var(--ink-soft); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .topbar a:hover { color: var(--accent); border-color: var(--accent); }
+
+  .sheets { display: flex; flex-direction: column; gap: 1rem; }
+  @media (min-width: 1040px) {
+    .sheets { flex-direction: row; align-items: flex-start; }
+    .sheet { flex: 1; min-width: 0; }
+  }
+
+  .sheet {
+    position: relative;
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    padding: 1.35rem 1.5rem 1.5rem;
+  }
+
+  .tick { position: absolute; width: 10px; height: 10px; pointer-events: none; }
+  .tick::before, .tick::after { content: ""; position: absolute; background: var(--ink-faint); }
+  .tick::before { width: 10px; height: 1px; top: 4px; left: 0; }
+  .tick::after { width: 1px; height: 10px; left: 4px; top: 0; }
+  .tick.tl { top: 6px; left: 6px; }
+  .tick.tr { top: 6px; right: 6px; }
+  .tick.bl { bottom: 6px; left: 6px; }
+  .tick.br { bottom: 6px; right: 6px; }
+
+  .sheet-no {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    margin-bottom: 0.9rem;
+  }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.3rem;
+  }
+
+  h1 {
+    font-family: var(--font-mono);
+    font-size: clamp(1.2rem, 2.3vw, 1.55rem);
+    letter-spacing: -0.01em;
+    margin: 0 0 0.35rem;
+    text-wrap: balance;
+  }
+
+  .tagline {
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+    max-width: 56ch;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0 0 0.6rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section.block { margin: 1.15rem 0; }
+  section.block:first-of-type { margin-top: 0; }
+
+  p { color: var(--ink-soft); margin: 0 0 0.6rem; max-width: 68ch; font-size: 0.86rem; }
+
+  .thesis {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--ink);
+    background: var(--paper-panel);
+    border-left: 2px solid var(--accent);
+    padding: 0.6rem 0.8rem;
+    margin: 0 0 1rem;
+    max-width: 62ch;
+  }
+
+  table.spec { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+  table.spec th, table.spec td {
+    text-align: left;
+    padding: 0.36rem 0.5rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  table.spec thead th {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  table.spec td.k, table.spec th.k {
+    font-family: var(--font-mono);
+    color: var(--ink);
+    white-space: nowrap;
+    width: 1%;
+  }
+  table.spec tbody tr:last-child td { border-bottom: none; }
+  table.spec td.dim { color: var(--ink-faint); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--paper-panel);
+    padding: 0.05em 0.3em;
+  }
+
+  pre.term {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    background: var(--paper-panel);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    padding: 0.6rem 0.75rem;
+    overflow-x: auto;
+    margin: 0 0 0.8rem;
+    line-height: 1.55;
+  }
+  pre.term .c { color: var(--ink-faint); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+  ol.loop {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  @media (max-width: 720px) { ol.loop { grid-template-columns: repeat(2, 1fr); } }
+  ol.loop li { background: var(--paper); padding: 0.6rem 0.65rem; }
+  ol.loop .num { font-family: var(--font-mono); color: var(--accent); font-size: 0.64rem; letter-spacing: 0.04em; }
+  ol.loop .t { font-family: var(--font-mono); font-weight: 600; font-size: 0.76rem; margin: 0.2rem 0 0.25rem; }
+  ol.loop p { font-size: 0.7rem; margin: 0; }
+
+  .diagram-wrap {
+    background: var(--paper-panel);
+    border: 1px solid var(--rule);
+    padding: 0.6rem 0.7rem;
+    margin: 0 0 1rem;
+  }
+  .diagram-wrap svg { width: 100%; height: auto; display: block; }
+  .diagram-cap {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+    color: var(--ink-faint);
+    margin: 0.45rem 0 0;
+  }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.1em 0.4em;
+    border: 1px solid currentColor;
+  }
+  .pill.safe { color: var(--accent-2); }
+  .pill.warn { color: var(--accent); }
+
+  .callout {
+    background: var(--paper-panel);
+    border-left: 2px solid var(--accent-2);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.78rem;
+  }
+  .callout ul { margin: 0; padding-left: 1rem; }
+  .callout li { margin-bottom: 0.3rem; font-size: 0.78rem; color: var(--ink-soft); }
+  .callout li:last-child { margin-bottom: 0; }
+  .callout li strong { color: var(--ink); }
+
+  a { color: var(--accent); }
+</style>
+
+<div class="page">
+
+  <div class="topbar">
+    <span class="name">Diagrammatic Dialogues</span>
+    <a href="https://github.com/sprine/diagrammatic-dialogues">github.com/sprine/diagrammatic-dialogues</a>
+  </div>
+
+  <div class="sheets">
+
+    <section class="sheet" id="sheet-1">
+      <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
+      <div class="sheet-no">1 / 2</div>
+
+      <p class="kicker">Codebase orientation tool</p>
+      <h1>Diagrammatic Dialogues</h1>
+      <p class="tagline">Open a codebase you didn't write. Claude draws it as a diagram. Click a box, ask a question, get the next diagram — every earlier one stays on screen, and every flag stays clickable.</p>
+
+      <p class="thesis">Built for one question: is this the decision I would have taken?</p>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 560 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A card holding a diagram gets a flag planted on one box, producing a second card with the redrawn diagram, while the first card stays visible beside it.">
+          <g fill="none" stroke="currentColor" stroke-width="1" color="var(--ink)">
+            <rect x="10" y="12" width="188" height="112" rx="0"/>
+            <rect x="30" y="30" width="58" height="22" rx="0"/>
+            <rect x="116" y="30" width="58" height="22" rx="0"/>
+            <line x1="88" y1="41" x2="114" y2="41" stroke-dasharray="3 3"/>
+            <rect x="30" y="76" width="144" height="22" rx="0"/>
+            <circle cx="98" cy="87" r="2.5" fill="currentColor" stroke="none"/>
+          </g>
+          <g fill="none" stroke="currentColor" stroke-width="1" color="var(--accent)">
+            <line x1="101" y1="87" x2="222" y2="87" stroke-dasharray="2 4"/>
+            <path d="M216 82 L224 87 L216 92" fill="none"/>
+          </g>
+          <g fill="none" stroke="currentColor" stroke-width="1" color="var(--ink)">
+            <rect x="228" y="4" width="196" height="128" rx="0"/>
+            <rect x="248" y="20" width="64" height="22" rx="0"/>
+            <rect x="340" y="20" width="64" height="22" rx="0"/>
+            <line x1="312" y1="31" x2="338" y2="31" stroke-dasharray="3 3"/>
+            <rect x="248" y="64" width="156" height="22" rx="0"/>
+          </g>
+          <rect x="248" y="94" width="156" height="16" rx="0" fill="none" stroke="var(--accent-2)" stroke-width="1"/>
+        </svg>
+        <p class="diagram-cap">Card, flag, next card — the strip is the lineage, root on the left.</p>
+      </div>
+
+      <section class="block">
+        <h2>System</h2>
+        <table class="spec">
+          <tbody>
+            <tr><td class="k">Interface</td><td>Local web app, one browser tab, served by FastAPI + server-sent events</td></tr>
+            <tr><td class="k">Rendering</td><td>ASCII grid → geometry → hand-drawn SVG, one renderer, server-side</td></tr>
+            <tr><td class="k">Storage</td><td>SQLite — a trail is a rooted tree of cards, kept across restarts</td></tr>
+            <tr><td class="k">Engine</td><td><code>claude -p</code>, one CLI turn per card, children fork their parent's session</td></tr>
+            <tr><td class="k">Requires</td><td><code>uv</code> and a logged-in <code>claude</code> CLI</td></tr>
+            <tr><td class="k">Default port</td><td><code>127.0.0.1:8420</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="block">
+        <h2>The loop</h2>
+        <ol class="loop">
+          <li>
+            <div class="num">01 Open</div>
+            <div class="t">Point at a directory</div>
+            <p>Fast, shallow opening sketch — not an audit.</p>
+          </li>
+          <li>
+            <div class="num">02 Flag</div>
+            <div class="t">Click a box</div>
+            <p>Ask a question; what you clicked rides along.</p>
+          </li>
+          <li>
+            <div class="num">03 Redraw</div>
+            <div class="t">Get the next card</div>
+            <p>Redrawn at whatever depth the question called for.</p>
+          </li>
+          <li>
+            <div class="num">04 Trail</div>
+            <div class="t">Every flag stays live</div>
+            <p>Re-flag an old card and it branches from there.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="block">
+        <h2>Quickstart</h2>
+        <pre class="term"><span class="c"># from the project root</span>
+./run.sh                     <span class="c"># -&gt; http://127.0.0.1:8420</span>
+
+<span class="c"># run the test suite</span>
+uv run --extra dev python -m pytest -q</pre>
+        <table class="spec">
+          <thead><tr><th class="k">Variable</th><th>Effect</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td class="k">SID_PORT</td><td>Port the app binds to</td><td class="dim">8420</td></tr>
+            <tr><td class="k">SID_DB</td><td>Path to the SQLite trail database</td><td class="dim">./diagrams.db</td></tr>
+            <tr><td class="k">SID_OPEN</td><td>Set to <code>0</code> to skip auto-launching a browser tab</td><td class="dim">1</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+
+    <section class="sheet" id="sheet-2">
+      <span class="tick tl"></span><span class="tick tr"></span><span class="tick bl"></span><span class="tick br"></span>
+      <div class="sheet-no">2 / 2</div>
+
+      <section class="block" style="margin-top:0">
+        <h2>Trust &amp; guarantees</h2>
+        <p>The app exists to answer questions about code you did not write, so it is built to not ask for faith.</p>
+        <table class="spec">
+          <thead><tr><th class="k">Property</th><th>Mechanism</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Watchable</td><td>A running card shows an elapsed clock, each file as it's opened, and a live line of what's being drawn</td></tr>
+            <tr><td class="k">Receipted</td><td>Every card lists every file read and search run, in order, with cost and wall time; blocked calls are shown as <span class="pill warn">blocked</span>, not dropped</td></tr>
+            <tr><td class="k">Source-true</td><td>One click swaps the picture for the exact ASCII it was mechanically drawn from</td></tr>
+            <tr><td class="k">Read-only by default</td><td>An allowlist, not a denylist: <code>Read</code>, <code>Glob</code>, <code>Grep</code>, read-only <code>git</code>/<code>ls</code>/<code>find</code>. Writes and shell redirects are refused</td></tr>
+            <tr><td class="k">Editing is opt-in</td><td>Tick <em>let it edit files</em> on one remark; only that turn runs with write access, and the resulting card is badged <span class="pill safe">wrote code</span></td></tr>
+            <tr><td class="k">Failures are filed, not patched</td><td>A bad render goes to <code>training-data/</code> with your description and both the raw and repaired ASCII — nothing quietly edits the renderer</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="grid2">
+        <section class="block">
+          <h2>Architecture</h2>
+          <table class="spec">
+            <tbody>
+              <tr><td class="k">asciigrid.py</td><td>ASCII grid → geometry, plus <code>repair()</code> and <code>audit()</code></td></tr>
+              <tr><td class="k">sketch.py</td><td>Geometry → hand-drawn SVG; also a standalone CLI</td></tr>
+              <tr><td class="k">claude_cli.py</td><td>Drives <code>claude -p</code>, streams progress, retries a broken drawing</td></tr>
+              <tr><td class="k">prompts.py</td><td>The drawing contract, output schema, depth ladder</td></tr>
+              <tr><td class="k">models.py</td><td>SQLite; a trail is a rooted tree of cards</td></tr>
+              <tr><td class="k">web.py</td><td>FastAPI + SSE; renders each card server-side</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="block">
+          <h2>Effort ladder</h2>
+          <table class="spec">
+            <thead><tr><th class="k">Depth</th><th>Model</th><th>Effort</th></tr></thead>
+            <tbody>
+              <tr><td class="k">Opening sketch</td><td>Sonnet</td><td class="dim">Low</td></tr>
+              <tr><td class="k">Follow-up flag</td><td>Sonnet → Opus</td><td class="dim">Rising</td></tr>
+              <tr><td class="k">Deep question</td><td>Opus</td><td class="dim">High</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:0.5rem;">Every card records the model and effort that produced it; both are overridable before asking.</p>
+        </section>
+      </div>
+
+      <section class="block">
+        <h2>Design notes</h2>
+        <div class="callout">
+          <ul>
+            <li><strong>The ASCII grid is the layout.</strong> Boxes render where the model drew them — no layout engine, so the picture is provably faithful to text you can inspect.</li>
+            <li><strong>One renderer, in Python.</strong> Serves both the app and the standalone CLI; there is deliberately no JS renderer.</li>
+            <li><strong>Wobble is seeded per card.</strong> Same card, same picture, on every render.</li>
+            <li><strong><code>repair()</code> before <code>audit()</code>.</strong> Repair straightens boxes deterministically; only a box that still won't close earns a redraw turn.</li>
+          </ul>
+        </div>
+      </section>
+    </section>
+
+  </div>
+</div>
