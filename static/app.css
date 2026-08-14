@@ -30,6 +30,7 @@ button { font: inherit; cursor: pointer; }
   padding: 10px 18px; border-bottom: 1px solid var(--ink-faint);
   background: var(--paper); position: sticky; top: 0; z-index: 5;
 }
+#crumb[hidden] { display: none; }
 .crumb-home { background: none; border: 0; color: var(--ink); padding: 2px 0; }
 .crumb-home:hover { color: var(--flag); }
 .crumb-path { color: var(--ink-soft); font-size: 12px; }
