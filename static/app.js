@@ -241,12 +241,14 @@ async function route() {
   if (!id) {
     home.hidden = false;
     strip.hidden = true;
+    crumb.hidden = true;
     crumb.replaceChildren();
     loadHome();
     return;
   }
   home.hidden = true;
   strip.hidden = false;
+  crumb.hidden = false;
   await refresh(id);
 }
 
