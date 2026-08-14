@@ -96,9 +96,16 @@ def index(request: Request):
 @app.get("/api/trails")
 def api_trails():
     """Every trail, each carrying its own card tree (id/parent/title/remark —
-    enough to draw the lineage as a tree without a follow-up call per trail)."""
+    enough to draw the lineage as a tree without a follow-up call per trail).
+    Ordered by last activity (its newest card, or its own creation if it has
+    none yet), so a trail that just got a fresh remark rises back to the top
+    even if it's an old trail."""
     with db() as conn:
-        trails = conn.execute("SELECT * FROM trail ORDER BY created_at DESC").fetchall()
+        trails = conn.execute(
+            """SELECT t.*, COALESCE(MAX(c.created_at), t.created_at) AS last_active
+               FROM trail t LEFT JOIN card c ON c.trail_id = t.id
+               GROUP BY t.id ORDER BY last_active DESC"""
+        ).fetchall()
         out = []
         for t in trails:
             cards = conn.execute(
