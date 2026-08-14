@@ -183,8 +183,15 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
             "SELECT * FROM trail WHERE id = ?", (parent["trail_id"],)
         ).fetchone()
 
-    # These reach a subprocess argv, so they are chosen from the list, not passed through.
-    depth = parent["depth"] + 1
+    # No flag planted: this isn't digging into `parent`, it's a different
+    # question, so it starts its own trail (its own root card) against the
+    # same directory rather than nesting under the card that happened to be
+    # open. Trails against the same target_dir already group together in the
+    # sidebar, so this still reads as "everywhere dug into this project".
+    anchor_node = payload.get("anchor_node")
+    rooted = anchor_node is None
+    trail_id = str(uuid.uuid4()) if rooted else parent["trail_id"]
+    depth = 0 if rooted else parent["depth"] + 1
     default_model, default_effort = prompts.rung(depth)
     model = payload.get("model") if payload.get("model") in prompts.MODELS else default_model
     effort = payload.get("effort") if payload.get("effort") in prompts.EFFORTS else default_effort
@@ -194,18 +201,22 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
 
     # Must match what api_view rendered, or the flag resolves to the wrong box.
     diagram = parse(repair(parent["ascii"]))
-    anchor_node = payload.get("anchor_node")
     node = diagram.node(anchor_node) if anchor_node else None
     anchor_label = node.label.replace("\n", " ") if node else ""
     neighbours = diagram.neighbours(anchor_node) if node else []
 
     child_id = str(uuid.uuid4())
     with db() as conn:
+        if rooted:
+            conn.execute(
+                "INSERT INTO trail (id, target_dir, title, blank) VALUES (?,?,?,?)",
+                (trail_id, trail["target_dir"], trail["title"], int(trail["blank"])),
+            )
         conn.execute(
             """INSERT INTO card (id, trail_id, parent_id, depth, remark, anchor_node,
                                  anchor_label, model, effort, write_mode, web_mode)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (child_id, parent["trail_id"], card_id, depth, remark, anchor_node,
+            (child_id, trail_id, None if rooted else card_id, depth, remark, anchor_node,
              anchor_label, model, effort, int(write), int(web)),
         )
     _launch(
