@@ -190,14 +190,14 @@ function fixesDetails(reports) {
   return details;
 }
 
-async function openTrail(dir, kind, create) {
-  const { card_id } = await post('/api/trails', { target_dir: dir, kind, create });
+async function openTrail(dir, create) {
+  const { card_id } = await post('/api/trails', { target_dir: dir, create });
   go(card_id);
 }
 
 // A 404 means the path doesn't exist yet — offer to create it and start blank,
 // rather than just failing. Any other error is shown as-is.
-function askToCreate(dir, kind) {
+function askToCreate(dir) {
   const box = $('#open-error');
   box.replaceChildren(el('span', null, `"${dir}" doesn't exist. `));
   const create = el('button', 'ghost', 'Create it and start blank');
@@ -205,7 +205,7 @@ function askToCreate(dir, kind) {
   create.onclick = async () => {
     create.disabled = true;
     try {
-      await openTrail(dir, kind, true);
+      await openTrail(dir, true);
     } catch (err) {
       box.textContent = err.message;
     }
@@ -220,10 +220,9 @@ $('#open').onsubmit = async (ev) => {
   button.disabled = true;
   $('#open-error').textContent = '';
   try {
-    const kind = document.querySelector('input[name="kind"]:checked')?.value || 'code';
-    await openTrail(dir, kind, false);
+    await openTrail(dir, false);
   } catch (err) {
-    if (err.status === 404) askToCreate(dir, document.querySelector('input[name="kind"]:checked')?.value || 'code');
+    if (err.status === 404) askToCreate(dir);
     else $('#open-error').textContent = err.message;
   } finally {
     button.disabled = false;
@@ -537,6 +536,12 @@ function composer(card) {
   text.id = 'remark';
   text.rows = 4;
   text.placeholder = 'Why is it done this way?  /  Is that the decision I would have taken?  /  Split this out.';
+  text.onkeydown = (ev) => {
+    if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter') {
+      ev.preventDefault();
+      box.requestSubmit();
+    }
+  };
   box.appendChild(text);
 
   const controls = el('div', 'controls');

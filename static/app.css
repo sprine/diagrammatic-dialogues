@@ -39,8 +39,6 @@ button { font: inherit; cursor: pointer; }
 #home h1 { font-size: 22px; letter-spacing: -0.01em; }
 #home .tagline { color: var(--ink-soft); margin: 6px 0 28px; }
 #open { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-#open .kinds { display: flex; gap: 10px; border: 0; margin: 0; padding: 0; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 #dir {
   flex: 1; min-width: 0; font: inherit; padding: 10px 12px;
   border: 1px solid var(--ink-faint); border-radius: 8px; background: var(--card); color: var(--ink);

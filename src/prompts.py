@@ -152,37 +152,11 @@ Here is the diagram they are pointing at, for reference:
 {parent_ascii}
 """
 
-_DOCS_TASK = """\
-Map the collection of documents in {target} as a high-level diagram.
-
-Move fast and stay shallow: list what is there, read each document's title,
-abstract and section headings, and enough of the body to be honest about what it
-argues. This is the opening sketch, not a summary of everything — the user will
-point at whatever they want to dig into.
-
-Show the major ideas and how they relate: what builds on what, what disagrees
-with what, what is evidence for what. Cite the document and page or section a
-claim came from, not a line number.
-"""
-
 WEB_NOTE = """\
 You may search the web this turn. Use it only to fill a gap the material in the
 target directory does not cover, and say in your points which claims came from
 the web rather than from what you were pointed at.
 """
-
-_DOCS_NOTE = """\
-Some of what you're pointed at may be PDFs. Before opening one, follow the
-pdf-to-md skill: check {cache_dir} for a cached markdown copy of it, and read
-that instead if it exists. If it does not, convert the PDF following the skill,
-write the markdown to the cache, then read your own copy rather than the PDF —
-that's what makes the next turn, in this trail or any other, skip the PDF
-entirely.
-"""
-
-
-def docs_note(cache_dir: str) -> str:
-    return _DOCS_NOTE.format(cache_dir=cache_dir)
 
 WRITE_NOTE = """\
 You may modify files in the target directory for this turn, because the user
@@ -192,14 +166,8 @@ change, and list every file you touched in your answer.
 """
 
 
-# A trail is opened over code or over documents; the difference is the root
-# prompt's framing, which every card below inherits by resuming the session.
-KINDS = ["code", "docs"]
-
-
-def root_prompt(target: str, kind: str = "code") -> str:
-    task = _DOCS_TASK if kind == "docs" else _ROOT_TASK
-    return task.format(target=target)
+def root_prompt(target: str) -> str:
+    return _ROOT_TASK.format(target=target)
 
 
 def remark_prompt(parent: dict, remark: str, anchor_label: str, neighbours: list[str]) -> str:

@@ -6,6 +6,3 @@ __pycache__/
 
 # the trail store: local state, not source
 diagrams.db*
-
-# pdf-to-md cache: regenerable, keyed by absolute path (see src/pdfcache.py)
-pdf-cache/

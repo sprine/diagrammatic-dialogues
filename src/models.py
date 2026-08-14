@@ -14,9 +14,6 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS trail (
     id          TEXT PRIMARY KEY,
     target_dir  TEXT NOT NULL,
-    -- code | docs: chosen once when the trail is opened, since every card in it
-    -- resumes the same session and inherits the root prompt's framing.
-    kind        TEXT NOT NULL DEFAULT 'code',
     title       TEXT NOT NULL DEFAULT 'untitled',
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -84,7 +81,6 @@ def db():
 ADDED_COLUMNS = [
     ("card", "points", "TEXT NOT NULL DEFAULT '[]'"),
     ("card", "web_mode", "INTEGER NOT NULL DEFAULT 0"),
-    ("trail", "kind", "TEXT NOT NULL DEFAULT 'code'"),
     # A trail rooted on a folder created empty, for this trail, has nothing to
     # protect yet: every card in it gets write+web access without asking each time.
     ("trail", "blank", "INTEGER NOT NULL DEFAULT 0"),

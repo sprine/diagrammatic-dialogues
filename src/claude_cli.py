@@ -13,9 +13,8 @@ import re
 import shutil
 from pathlib import Path
 
-from . import pdfcache
 from .asciigrid import audit, repair
-from .prompts import DRAWING_RULES, OUTPUT_SCHEMA, WEB_NOTE, WRITE_NOTE, docs_note
+from .prompts import DRAWING_RULES, OUTPUT_SCHEMA, WEB_NOTE, WRITE_NOTE
 
 CLAUDE = shutil.which("claude") or "claude"
 STREAM_LIMIT = 16 * 1024 * 1024  # stream-json lines carry whole file reads
@@ -51,11 +50,9 @@ _SCAFFOLD = re.compile(r"</?(answer|invoke|function_calls|parameter|result|outpu
 
 def _argv(
     *, model: str, effort: str, target: Path, write: bool, web: bool,
-    docs: bool, resume: str | None,
+    resume: str | None,
 ) -> list[str]:
     system_prompt = DRAWING_RULES + (WRITE_NOTE if write else "") + (WEB_NOTE if web else "")
-    if docs:
-        system_prompt += docs_note(str(pdfcache.DIR))
     argv = [
         CLAUDE, "-p",
         "--output-format", "stream-json", "--verbose",
@@ -67,11 +64,6 @@ def _argv(
         "--disable-slash-commands",
         "--add-dir", str(target),
     ]
-    if docs:
-        # The cache lives outside target, so it needs its own grant, and it must
-        # stay writable even on a read-only turn — populating it is not the kind
-        # of edit the write toggle is asking permission for.
-        argv += ["--add-dir", str(pdfcache.DIR)]
     if write:
         # acceptEdits carries no allowlist, so the web is shut off by name instead.
         argv += ["--permission-mode", "acceptEdits"]
@@ -79,8 +71,6 @@ def _argv(
             argv += ["--disallowed-tools", ",".join(WEB_TOOLS)]
     else:
         allowed = READ_ONLY_TOOLS + (WEB_TOOLS if web else [])
-        if docs:
-            allowed = allowed + [f"Write({pdfcache.DIR}/**)"]
         argv += ["--allowed-tools", ",".join(allowed)]
     if resume:
         argv += ["--resume", resume, "--fork-session"]
@@ -103,7 +93,7 @@ geometry. Keep your answer text as it was unless the redraw changes what is true
 
 async def run(
     *, prompt: str, target: Path, model: str, effort: str,
-    write: bool, web: bool = False, docs: bool = False, resume: str | None,
+    write: bool, web: bool = False, resume: str | None,
 ):
     """Yield progress events, then exactly one 'done' or 'error' event.
 
@@ -118,7 +108,7 @@ async def run(
     for attempt in range(2):
         async for event in one_turn(
             prompt=prompt, target=target, model=model, effort=effort,
-            write=write, web=web, docs=docs, resume=resume,
+            write=write, web=web, resume=resume,
         ):
             if event["kind"] == "result":
                 final = event["result"]
@@ -166,18 +156,16 @@ async def run(
 
 async def one_turn(
     *, prompt: str, target: Path, model: str, effort: str,
-    write: bool, web: bool = False, docs: bool = False, resume: str | None,
+    write: bool, web: bool = False, resume: str | None,
 ):
     """One CLI invocation: activity events, then a single 'result' or 'error'.
 
     The ascii comes back exactly as the model drew it — no repair, no redraw.
     `src/capture.py` depends on that to collect honest parser samples.
     """
-    if docs:
-        pdfcache.DIR.mkdir(exist_ok=True)
     argv = _argv(
         model=model, effort=effort, target=target,
-        write=write, web=web, docs=docs, resume=resume,
+        write=write, web=web, resume=resume,
     )
     try:
         proc = await asyncio.create_subprocess_exec(

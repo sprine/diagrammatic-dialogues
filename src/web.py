@@ -113,8 +113,6 @@ def api_trails():
 @app.post("/api/trails")
 async def api_open(payload: dict = Body(...)):
     target = Path(payload.get("target_dir", "")).expanduser().resolve()
-    # Chosen once, here: every card below resumes this trail's session.
-    kind = payload.get("kind") if payload.get("kind") in prompts.KINDS else "code"
 
     if target.exists() and not target.is_dir():
         raise HTTPException(400, f"not a directory: {target}")
@@ -124,14 +122,14 @@ async def api_open(payload: dict = Body(...)):
             # of just failing.
             raise HTTPException(404, f"no such directory: {target}")
         target.mkdir(parents=True)
-        return _open_blank(target, kind)
+        return _open_blank(target)
 
     trail_id, card_id = str(uuid.uuid4()), str(uuid.uuid4())
     model, effort = prompts.rung(0)
     with db() as conn:
         conn.execute(
-            "INSERT INTO trail (id, target_dir, kind, title) VALUES (?,?,?,?)",
-            (trail_id, str(target), kind, target.name),
+            "INSERT INTO trail (id, target_dir, title) VALUES (?,?,?)",
+            (trail_id, str(target), target.name),
         )
         conn.execute(
             "INSERT INTO card (id, trail_id, depth, model, effort, remark) VALUES (?,?,0,?,?,?)",
@@ -139,19 +137,18 @@ async def api_open(payload: dict = Body(...)):
         )
     _launch(
         card_id,
-        prompt=prompts.root_prompt(str(target), kind),
+        prompt=prompts.root_prompt(str(target)),
         target=target,
         model=model,
         effort=effort,
         write=False,
         web=False,
-        docs=kind == "docs",
         resume=None,
     )
     return {"trail_id": trail_id, "card_id": card_id}
 
 
-def _open_blank(target: Path, kind: str) -> dict:
+def _open_blank(target: Path) -> dict:
     """A folder created empty has nothing to map, so there is no root turn to
     run: land straight on a blank canvas with the composer. `trail.blank` marks
     the whole trail so every later card in it gets write+web access without
@@ -160,8 +157,8 @@ def _open_blank(target: Path, kind: str) -> dict:
     model, effort = prompts.rung(0)
     with db() as conn:
         conn.execute(
-            "INSERT INTO trail (id, target_dir, kind, title, blank) VALUES (?,?,?,?,1)",
-            (trail_id, str(target), kind, target.name),
+            "INSERT INTO trail (id, target_dir, title, blank) VALUES (?,?,?,1)",
+            (trail_id, str(target), target.name),
         )
         conn.execute(
             "INSERT INTO card (id, trail_id, depth, status, model, effort, title) "
@@ -219,7 +216,6 @@ async def api_remark(card_id: str, payload: dict = Body(...)):
         effort=effort,
         write=write,
         web=web,
-        docs=trail["kind"] == "docs",
         resume=parent["session_id"],
     )
     return {"card_id": child_id}
@@ -253,7 +249,7 @@ async def api_rerun(card_id: str):
         prompt = prompts.remark_prompt(parent, card["remark"], card["anchor_label"], neighbours)
         resume = parent["session_id"]
     else:
-        prompt = prompts.root_prompt(trail["target_dir"], trail["kind"])
+        prompt = prompts.root_prompt(trail["target_dir"])
         resume = None
 
     # A blank trail auto-grants both, same as a fresh remark would.
@@ -278,7 +274,6 @@ async def api_rerun(card_id: str):
         effort=card["effort"],
         write=write,
         web=web,
-        docs=trail["kind"] == "docs",
         resume=resume,
     )
     return {"ok": True}
